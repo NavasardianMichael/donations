@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 
 import { Avatar, Heading, Lead, ProgressBar, Text } from "@/components/ui";
 import { DonationForm } from "@/components/donation/donation-form";
+import { TrackBeacon } from "@/components/donation/track-beacon";
 import { isArcaConfigured } from "@/lib/payments/arca";
 import { formatRelativeTime } from "@/lib/utils";
 import {
@@ -73,6 +74,8 @@ export default async function DonationPage(props: {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
+      <TrackBeacon pageId={page.id} source="DIRECT" />
+
       <div className="text-center">
         <Avatar
           size="xl"

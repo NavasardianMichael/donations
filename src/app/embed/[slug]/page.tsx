@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 
-import { EmbedHeightReporter } from "@/components/donation/embed-height-reporter";
 import { DonationForm } from "@/components/donation/donation-form";
+import { EmbedHeightReporter } from "@/components/donation/embed-height-reporter";
+import { TrackBeacon } from "@/components/donation/track-beacon";
 import { Avatar, Heading, ProgressBar, Text } from "@/components/ui";
 import { isArcaConfigured } from "@/lib/payments/arca";
 import { getPublicPageBySlug, listPublishedSlugs } from "@/server/queries/public-pages";
@@ -44,6 +45,7 @@ export default async function EmbedDonationPage(props: {
   return (
     <div className="mx-auto max-w-sm">
       <EmbedHeightReporter />
+      <TrackBeacon pageId={page.id} source="EMBED" />
 
       <div className="flex items-center gap-3">
         <Avatar
