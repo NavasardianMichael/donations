@@ -1,32 +1,43 @@
-import { cn, formatCurrency, progressRatio } from "@/lib/utils";
+"use client";
+
+import { cn, formatMoney, formatPercent, progressRatio } from "@/lib/utils";
+
+import { useUiLabels } from "./labels";
 
 export interface ProgressBarProps extends React.ComponentPropsWithRef<"div"> {
-  /** Raised so far, in minor units. */
-  valueCents: number;
+  /** Raised so far, in integer minor units. */
+  valueMinor: number;
   /** Target, in minor units. Null renders the bar empty (no goal set). */
-  goalCents?: number | null;
+  goalMinor?: number | null;
   currency?: string;
   size?: "sm" | "md" | "lg";
-  /** Show the "$12,450 / $50,000" caption above the track. */
+  /** Show the "1 245 000 ֏ / 5 000 000 ֏" caption above the track. */
   showLabels?: boolean;
+  /** Caption word. Defaults to the provided UI labels. */
   label?: React.ReactNode;
   /** Layout used on the manage-pages cards: label left, track right. */
   inline?: boolean;
 }
 
 export function ProgressBar({
-  valueCents,
-  goalCents,
-  currency = "usd",
+  valueMinor,
+  goalMinor,
+  currency = "amd",
   size = "md",
   showLabels = true,
-  label = "Raised",
+  label,
   inline = false,
   className,
   ...props
 }: ProgressBarProps) {
-  const ratio = progressRatio(valueCents, goalCents ?? null);
+  const labels = useUiLabels();
+  const caption = label ?? labels.raised;
+
+  const ratio = progressRatio(valueMinor, goalMinor ?? null);
   const percent = Math.round(ratio * 100);
+
+  const formattedValue = formatMoney(valueMinor, currency);
+  const formattedGoal = goalMinor ? formatMoney(goalMinor, currency) : null;
 
   const track = (
     <div
@@ -35,9 +46,9 @@ export function ProgressBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={
-        goalCents
-          ? `${formatCurrency(valueCents, currency)} raised of ${formatCurrency(goalCents, currency)} goal`
-          : `${formatCurrency(valueCents, currency)} raised`
+        formattedGoal
+          ? labels.progressLabel(formattedValue, formattedGoal)
+          : labels.progressLabelNoGoal(formattedValue)
       }
       className={cn(
         "w-full overflow-hidden rounded-full bg-surface-active",
@@ -57,17 +68,17 @@ export function ProgressBar({
     return (
       <div className={cn("flex items-center gap-4", className)} {...props}>
         <div className="min-w-0">
-          {label ? (
-            <p className="text-xs font-semibold tracking-[0.05em] text-muted uppercase">
-              {label}
+          {caption ? (
+            <p className="text-xs font-semibold tracking-wider text-muted uppercase">
+              {caption}
             </p>
           ) : null}
           <p className="tabular text-sm font-semibold text-fg">
-            {formatCurrency(valueCents, currency)}
-            {goalCents ? (
+            {formattedValue}
+            {formattedGoal ? (
               <span className="font-normal text-muted">
                 {" / "}
-                {formatCurrency(goalCents, currency)}
+                {formattedGoal}
               </span>
             ) : null}
           </p>
@@ -82,17 +93,14 @@ export function ProgressBar({
       {showLabels ? (
         <div className="flex items-baseline justify-between gap-3">
           <p className="tabular text-sm font-semibold text-fg">
-            {formatCurrency(valueCents, currency)}
-            {label ? (
-              <span className="font-normal text-muted">
-                {" "}
-                {label.toString().toLowerCase()}
-              </span>
+            {formattedValue}
+            {caption ? (
+              <span className="font-normal text-muted"> {caption}</span>
             ) : null}
           </p>
-          {goalCents ? (
+          {formattedGoal ? (
             <p className="tabular text-sm text-muted">
-              {percent}% of {formatCurrency(goalCents, currency)}
+              {formatPercent(ratio, 0)} · {formattedGoal}
             </p>
           ) : null}
         </div>

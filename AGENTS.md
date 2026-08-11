@@ -8,11 +8,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# GiveDirect
+# Նվիրիր (Nvirir)
 
-Multi-tenant donation platform. Creators publish donation pages at `/d/[slug]`,
-embed them via iframe, and track donations and traffic. The platform takes a
-5% fee per transaction — a displayed figure only; see "No payments" below.
+Multi-tenant donation platform for the ARMENIAN market. Creators publish
+donation pages at `/d/[slug]`, embed them via iframe, and track donations and
+traffic. The platform takes a 5% fee per transaction — a displayed figure
+only; see "No payments" below.
 
 ## Version notes that differ from common defaults
 
@@ -28,6 +29,45 @@ embed them via iframe, and track donations and traffic. The platform takes a
 inline`. There is no `tailwind.config.js`. Dark mode is a `@custom-variant`
   bound to `.dark` because next-themes toggles a class.
 - **React 19** — components take `ref` as a normal prop. No `forwardRef`.
+
+## Armenian only
+
+The entire interface is Armenian. There is no language switcher and no locale
+segment in the URL.
+
+- **Never hard-code a user-facing string.** Every one lives in
+  `messages/hy.json` and is reached with `useTranslations()` (client) or
+  `getTranslations()` (server).
+- **Zod schemas are factories** taking a `MessageResolver`, so one schema
+  serves both surfaces. Wrap a next-intl translator with `resolver()` from
+  `src/lib/validations/resolver.ts` — the two signatures are contravariantly
+  incompatible and the widening is deliberate and documented there.
+- **`src/components/ui` must not call `t()`.** A component library that
+  imports this app's catalogue stops being a library. It declares its own
+  strings in the `UiLabels` interface; `AppUiLabels` in the root layout
+  supplies them translated.
+- **Never branch on message text.** `/expired|already used/.test(message)`
+  silently stops matching the moment copy is translated. Return a flag —
+  `ActionResult.tokenInvalid` is the precedent.
+- **Orthography**: `։` (U+0589) ends a sentence, not `.`. The question mark
+  `՞` goes over the last vowel of the questioned word (`Մոռացե՞լ եք`), not at
+  the end of the clause. Address users formally, as `Դուք`.
+- A missing key logs in development and renders `⚠️ namespace.key`; the
+  integration tests resolve against the real catalogue and throw.
+
+## Money is drams
+
+Default currency is **AMD**, displayed in whole drams (`5000 ֏`). Storage is
+integer **minor units** (luma) — field names end in `Minor`, never `Cents`.
+`src/lib/currency.ts` owns the conversion; `src/lib/fees.ts` owns the fee math.
+
+Do not assert on formatted money with plain spaces: ICU uses U+00A0 between
+groups and before `֏`. Normalise first, as `src/lib/fees.test.ts` does.
+
+## Brand
+
+`BRAND` in `src/lib/brand.ts` is the only place the product name appears.
+Never write "Նվիրիր" (or any other name) as a literal.
 
 ## No payments
 

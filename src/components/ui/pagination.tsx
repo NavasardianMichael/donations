@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
+import { useUiLabels } from "./labels";
 
 export interface PaginationProps {
   page: number;
@@ -45,6 +46,8 @@ export function Pagination({
   onPageChange,
   className,
 }: PaginationProps) {
+  const labels = useUiLabels();
+
   if (pageCount <= 1 && !totalItems) return null;
 
   const from = (page - 1) * pageSize + 1;
@@ -54,17 +57,15 @@ export function Pagination({
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={labels.pagination}
       className={cn(
         "flex flex-col-reverse items-center justify-between gap-3 sm:flex-row",
         className,
       )}
     >
       {totalItems !== undefined ? (
-        <p className="text-sm text-muted">
-          Showing <span className="tabular font-medium text-fg">{from}</span>–
-          <span className="tabular font-medium text-fg">{to}</span> of{" "}
-          <span className="tabular font-medium text-fg">{totalItems}</span>
+        <p className="tabular text-sm text-muted">
+          {labels.showing({ from, to, total: totalItems })}
         </p>
       ) : (
         <span />
@@ -79,7 +80,7 @@ export function Pagination({
             onClick={() => onPageChange(page - 1)}
           >
             <ChevronLeft aria-hidden="true" />
-            <span className="sr-only">Previous page</span>
+            <span className="sr-only">{labels.previousPage}</span>
           </Button>
 
           {pageWindow(page, pageCount).map((item, i) =>
@@ -112,7 +113,7 @@ export function Pagination({
             onClick={() => onPageChange(page + 1)}
           >
             <ChevronRight aria-hidden="true" />
-            <span className="sr-only">Next page</span>
+            <span className="sr-only">{labels.nextPage}</span>
           </Button>
         </div>
       ) : null}

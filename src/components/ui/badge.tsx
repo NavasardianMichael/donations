@@ -83,7 +83,7 @@ export function StatusDot({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 text-xs font-semibold tracking-[0.05em] uppercase",
+        "inline-flex items-center gap-2 text-xs font-semibold tracking-wider uppercase",
         tone === "draft" || tone === "archived" ? "text-muted" : "text-fg",
         className,
       )}

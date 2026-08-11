@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { MessageResolver } from "./resolver";
+
 /**
  * Slugs live in the root path namespace via /d/[slug], and a few words would
  * collide with real routes (or read as official). Rejected at validation time,
@@ -52,18 +54,18 @@ export const RESERVED_SLUGS = new Set([
 export const SLUG_MIN = 3;
 export const SLUG_MAX = 60;
 
-export const slugSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(SLUG_MIN, `Must be at least ${SLUG_MIN} characters.`)
-  .max(SLUG_MAX, `Must be ${SLUG_MAX} characters or fewer.`)
-  .regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    "Use lowercase letters, numbers and single hyphens only.",
-  )
-  .refine((value) => !RESERVED_SLUGS.has(value), {
-    message: "That address is reserved. Pick another.",
-  });
+export const slugSchema = (t: MessageResolver) =>
+  z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(SLUG_MIN, t("slug.tooShort", { min: SLUG_MIN }))
+    .max(SLUG_MAX, t("slug.tooLong", { max: SLUG_MAX }))
+    // Latin only: the slug lands in a URL, and Armenian would be
+    // percent-encoded into an unreadable mess. `slugify()` transliterates.
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, t("slug.format"))
+    .refine((value) => !RESERVED_SLUGS.has(value), {
+      message: t("slug.reserved"),
+    });
 
-export type Slug = z.infer<typeof slugSchema>;
+export type Slug = string;

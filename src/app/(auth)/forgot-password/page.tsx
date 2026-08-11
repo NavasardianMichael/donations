@@ -1,27 +1,34 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+
+import type { Metadata } from "next";
 
 import { AuthCard } from "@/components/auth/auth-card";
 
 import { ForgotPasswordForm } from "./forgot-password-form";
 
-export const metadata: Metadata = {
-  title: "Reset your password",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth.forgotPassword");
+  return {
+    title: t("subtitle"),
+    robots: { index: false, follow: false },
+  };
+}
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage() {
+  const t = await getTranslations("auth.forgotPassword");
+
   return (
     <AuthCard
-      subtitle="Reset your password."
+      subtitle={t("subtitle")}
       footer={
         <>
-          Remembered it?{" "}
+          {t("remembered")}{" "}
           <Link
             href="/login"
             className="font-semibold text-brand hover:underline"
           >
-            Log in
+            {t("loginLink")}
           </Link>
         </>
       }

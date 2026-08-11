@@ -64,22 +64,26 @@ function startOfUtcDay(date: Date): Date {
 }
 
 const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT ?? 5);
-const platformFee = (cents: number) =>
-  Math.round((cents * PLATFORM_FEE_PERCENT) / 100);
+/** Minor units in, minor units out. Mirrors src/lib/fees.ts. */
+const platformFee = (minor: number) =>
+  Math.round((minor * PLATFORM_FEE_PERCENT) / 100);
+
+/** Drams -> minor units (luma). */
+const AMD = (drams: number) => drams * 100;
 
 const DONOR_NAMES = [
-  "Jane Smith",
-  "Michael Ross",
-  "Sarah Jenkins",
-  "Alex River",
-  "Priya Raman",
-  "Tomas Kovac",
-  "Nina Okafor",
-  "Daniel Brooks",
-  "Yuki Tanaka",
-  "Marta Silva",
-  "Owen Hughes",
-  "Leila Haddad",
+  "Անի Հակոբյան",
+  "Դավիթ Սարգսյան",
+  "Մարիամ Գրիգորյան",
+  "Արամ Պետրոսյան",
+  "Նարե Մկրտչյան",
+  "Գոռ Ավետիսյան",
+  "Լիլիթ Խաչատրյան",
+  "Տիգրան Հովհաննիսյան",
+  "Սոնա Մարտիրոսյան",
+  "Վահե Ղազարյան",
+  "Անահիտ Բաղդասարյան",
+  "Հայկ Ստեփանյան",
 ] as const;
 
 const REFERRERS = [
@@ -87,17 +91,19 @@ const REFERRERS = [
   "https://www.google.com/",
   "https://t.co/",
   "https://www.instagram.com/",
-  "https://news.ycombinator.com/",
-  "https://alexriver.example.com/support",
+  "https://t.me/",
+  "https://news.am/",
 ] as const;
 
-const COUNTRIES = ["US", "US", "US", "CA", "GB", "DE", "AU", "NL"] as const;
+// Armenia first, then the diaspora hubs.
+const COUNTRIES = ["AM", "AM", "AM", "AM", "RU", "US", "FR", "GE"] as const;
 
 const MESSAGES = [
-  "Keep up the great work!",
-  "Happy to support this.",
-  "In memory of my grandmother.",
-  "Small amount but every bit helps.",
+  "Շարունակեք ձեր հրաշալի գործը։",
+  "Ուրախ եմ աջակցել։",
+  "Ի հիշատակ տատիկիս։",
+  "Փոքր գումար է, բայց ամեն ներդրում կարևոր է։",
+  "Հաջողություն ձեզ։",
   null,
   null,
   null,
@@ -110,7 +116,7 @@ async function main() {
   await prisma.contactSubmission.deleteMany();
   await prisma.user.deleteMany({
     where: {
-      email: { in: ["demo@givedirect.test", "second@givedirect.test"] },
+      email: { in: ["demo@nvirir.test", "second@nvirir.test"] },
     },
   });
 
@@ -118,11 +124,11 @@ async function main() {
 
   const user = await prisma.user.create({
     data: {
-      name: "Alex Smith",
-      email: "demo@givedirect.test",
+      name: "Անի Հակոբյան",
+      email: "demo@nvirir.test",
       emailVerified: new Date(),
       passwordHash,
-      bio: "Working to bring clean water to communities in need.",
+      bio: "Աշխատում ենք մաքուր խմելու ջուր հասցնել սահմանամերձ գյուղեր։",
       image:
         "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
     },
@@ -133,26 +139,27 @@ async function main() {
   const published = await prisma.donationPage.create({
     data: {
       userId: user.id,
-      slug: "clean-water-initiative",
-      title: "Emergency Relief: Clean Water Initiative",
+      slug: "makur-jur",
+      title: "Մաքուր ջուր սահմանամերձ գյուղերին",
       description:
-        "Every $25 delivers a month of safe drinking water to a family. We work with local partners to install and maintain filtration systems in communities where the nearest safe source is hours away.",
+        "Յուրաքանչյուր 5 000 դրամը մեկ ամսվա մաքուր խմելու ջուր է ապահովում մեկ ընտանիքի համար։ Տեղական գործընկերների հետ տեղադրում և սպասարկում ենք ջրի զտիչներ այն գյուղերում, որտեղ մոտակա անվտանգ աղբյուրը ժամերի հեռավորության վրա է։",
       status: "PUBLISHED",
       publishedAt: daysAgo(58),
-      currency: "usd",
-      suggestedAmounts: [1000, 2500, 5000],
+      currency: "amd",
+      suggestedAmounts: [AMD(1_000), AMD(5_000), AMD(10_000)],
       allowCustomAmount: true,
-      minAmountCents: 100,
-      goalAmountCents: 10_000_00,
+      minAmountMinor: AMD(100),
+      goalAmountMinor: AMD(5_000_000),
       showProgressBar: true,
       collectDonorName: true,
       collectMessage: true,
       thankYouMessage:
-        "Thank you — your gift is already on its way to a family that needs it.",
-      seoTitle: "Support Clean Water Initiatives | Alex Smith",
+        "Շնորհակալություն։ Ձեր նվիրատվությունն արդեն ճանապարհին է դեպի այն ընտանիքը, որին այն պետք է։",
+      seoTitle: "Աջակցեք մաքուր ջրի նախաձեռնությանը",
       seoDescription:
-        "Help fund filtration systems for communities without access to safe drinking water. 100% of every donation goes to fieldwork.",
-      seoKeywords: "clean water, charity, donation, non-profit",
+        "Օգնեք ֆինանսավորել ջրի զտիչներ այն համայնքներում, որտեղ մաքուր խմելու ջուր չկա։ Յուրաքանչյուր նվիրատվություն ուղղվում է դաշտային աշխատանքին։",
+      seoKeywords:
+        "մաքուր ջուր, բարեգործություն, նվիրատվություն, հանգանակություն",
       embedEnabled: true,
       createdAt: daysAgo(59),
     },
@@ -161,14 +168,14 @@ async function main() {
   const draft = await prisma.donationPage.create({
     data: {
       userId: user.id,
-      slug: "annual-education-fundraiser-2026",
-      title: "Annual Education Fundraiser 2026",
+      slug: "krtutyan-himnadram-2026",
+      title: "Կրթական հիմնադրամ 2026",
       description:
-        "Scholarships, books and transport for 200 students in the coming school year.",
+        "Կրթաթոշակներ, դասագրքեր և տրանսպորտ 200 աշակերտի համար՝ առաջիկա ուսումնական տարվա ընթացքում։",
       status: "DRAFT",
-      currency: "usd",
-      suggestedAmounts: [2500, 5000, 10_000],
-      goalAmountCents: 100_000_00,
+      currency: "amd",
+      suggestedAmounts: [AMD(5_000), AMD(10_000), AMD(25_000)],
+      goalAmountMinor: AMD(20_000_000),
       collectMessage: false,
       createdAt: daysAgo(12),
     },
@@ -177,15 +184,15 @@ async function main() {
   const archived = await prisma.donationPage.create({
     data: {
       userId: user.id,
-      slug: "community-center-build",
-      title: "Help Build the New Community Center",
+      slug: "hamaynkayin-kentron",
+      title: "Նոր համայնքային կենտրոն",
       description:
-        "Completed in March. Thank you to the 312 supporters who made it happen.",
+        "Ավարտվել է մարտին։ Շնորհակալություն 312 աջակիցներին, ովքեր դա հնարավոր դարձրին։",
       status: "ARCHIVED",
       publishedAt: daysAgo(400),
-      currency: "usd",
-      suggestedAmounts: [1000, 2500, 5000],
-      goalAmountCents: 50_000_00,
+      currency: "amd",
+      suggestedAmounts: [AMD(1_000), AMD(5_000), AMD(10_000)],
+      goalAmountMinor: AMD(10_000_000),
       createdAt: daysAgo(420),
     },
   });
@@ -204,10 +211,10 @@ async function main() {
 
   const donations: {
     pageId: string;
-    amountCents: number;
+    amountMinor: number;
     currency: string;
-    platformFeeCents: number;
-    netToCreatorCents: number | null;
+    platformFeeMinor: number;
+    netToCreatorMinor: number | null;
     status: DonationStatus;
     donorName: string | null;
     donorEmail: string | null;
@@ -219,7 +226,19 @@ async function main() {
     refundedAt: Date | null;
   }[] = [];
 
-  const AMOUNTS = [1000, 1000, 2500, 2500, 2500, 5000, 5000, 10_000, 25_000];
+  // Realistic Armenian donation sizes, weighted toward the smaller presets.
+  const AMOUNTS = [
+    AMD(1_000),
+    AMD(1_000),
+    AMD(2_000),
+    AMD(5_000),
+    AMD(5_000),
+    AMD(5_000),
+    AMD(10_000),
+    AMD(10_000),
+    AMD(25_000),
+    AMD(50_000),
+  ];
 
   for (let i = 0; i < TARGET_DONATIONS; i++) {
     // Bias recent: square the uniform draw so more donations land near today.
@@ -230,7 +249,7 @@ async function main() {
     const target =
       roll < donationPages[0]!.weight ? donationPages[0]! : donationPages[1]!;
 
-    const amountCents = pick(AMOUNTS);
+    const amountMinor = pick(AMOUNTS);
     const isAnonymous = random() < 0.2;
     const name = isAnonymous ? null : pick(DONOR_NAMES);
 
@@ -246,19 +265,18 @@ async function main() {
             : "REFUNDED";
 
     const succeeded = status === "SUCCEEDED" || status === "REFUNDED";
-    const fee = platformFee(amountCents);
+    const fee = platformFee(amountMinor);
 
     donations.push({
       pageId: target.page.id,
-      amountCents,
+      amountMinor,
       currency: target.page.currency,
-      platformFeeCents: fee,
-      netToCreatorCents: succeeded ? amountCents - fee : null,
+      platformFeeMinor: fee,
+      netToCreatorMinor: succeeded ? amountMinor - fee : null,
       status,
       donorName: name,
-      donorEmail: name
-        ? `${name.split(" ")[0]!.toLowerCase()}@example.com`
-        : null,
+      // Armenian names are not valid ASCII local-parts; index instead.
+      donorEmail: name ? `donor${i}@example.am` : null,
       message: target.page.collectMessage ? pick(MESSAGES) : null,
       isAnonymous,
       source: random() < 0.25 ? "EMBED" : "DIRECT",
@@ -312,7 +330,7 @@ async function main() {
     views: number;
     visitors: Set<string>;
     donationCount: number;
-    amountCents: number;
+    amountMinor: number;
   };
   const buckets = new Map<string, Bucket>();
 
@@ -324,7 +342,7 @@ async function main() {
         views: 0,
         visitors: new Set(),
         donationCount: 0,
-        amountCents: 0,
+        amountMinor: 0,
       };
       buckets.set(key, bucket);
     }
@@ -341,7 +359,7 @@ async function main() {
     if (donation.status !== "SUCCEEDED") continue;
     const bucket = bucketFor(donation.pageId, donation.createdAt);
     bucket.donationCount += 1;
-    bucket.amountCents += donation.amountCents;
+    bucket.amountMinor += donation.amountMinor;
   }
 
   await prisma.pageDailyStat.createMany({
@@ -353,7 +371,7 @@ async function main() {
         views: bucket.views,
         uniqueVisitors: bucket.visitors.size,
         donationCount: bucket.donationCount,
-        amountCents: bucket.amountCents,
+        amountMinor: bucket.amountMinor,
       };
     }),
   });
@@ -362,29 +380,29 @@ async function main() {
   // A second account, so ownership checks have something to fail against.
   const other = await prisma.user.create({
     data: {
-      name: "Sarah Jenkins",
-      email: "second@givedirect.test",
+      name: "Դավիթ Սարգսյան",
+      email: "second@nvirir.test",
       emailVerified: new Date(),
       passwordHash,
-      bio: "Supporting local food banks.",
+      bio: "Աջակցում ենք տեղական սննդի բանկերին։",
     },
   });
   await prisma.donationPage.create({
     data: {
       userId: other.id,
-      slug: "local-food-bank",
-      title: "Local Food Bank Drive",
-      description: "Ensuring no family in our community goes hungry.",
+      slug: "sndi-bank",
+      title: "Սննդի բանկի հանգանակություն",
+      description: "Ապահովում ենք, որ մեր համայնքում ոչ մի ընտանիք սոված չմնա։",
       status: "PUBLISHED",
       publishedAt: daysAgo(20),
-      goalAmountCents: 25_000_00,
-      suggestedAmounts: [1000, 2500, 5000],
+      goalAmountMinor: AMD(3_000_000),
+      suggestedAmounts: [AMD(1_000), AMD(3_000), AMD(5_000)],
     },
   });
   console.log(`Created second user ${other.email} for ownership tests`);
 
   console.log("\nSeed complete.");
-  console.log("  Sign in with demo@givedirect.test / Password123!");
+  console.log("  Sign in with demo@nvirir.test / Password123!");
 }
 
 main()

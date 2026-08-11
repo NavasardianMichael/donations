@@ -22,6 +22,7 @@ export * from "./dropdown-menu";
 export * from "./empty-state";
 export * from "./field";
 export * from "./input";
+export * from "./labels";
 export * from "./pagination";
 export * from "./popover";
 export * from "./progress-bar";

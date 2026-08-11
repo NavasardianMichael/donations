@@ -1,5 +1,6 @@
 "use server";
 
+import { getTranslations } from "next-intl/server";
 import { unstable_rethrow } from "next/navigation";
 
 import { AuthError } from "next-auth";
@@ -12,8 +13,8 @@ import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit, retryAfterSeconds } from "@/lib/rate-limit";
 import {
-  consumeVerificationToken,
   consumePasswordResetToken,
+  consumeVerificationToken,
   createPasswordResetToken,
   createVerificationToken,
   lookupPasswordResetToken,
@@ -24,9 +25,11 @@ import {
   signInSchema,
   signUpSchema,
 } from "@/lib/validations/auth";
+import { resolver } from "@/lib/validations/resolver";
 
 import {
   fail,
+  failTokenInvalid,
   ok,
   rateLimited,
   zodFieldErrors,
@@ -41,7 +44,15 @@ import {
  * registered. Sign-up, sign-in and password reset all return the same shape
  * whether or not the account exists, because an endpoint that says "no such
  * user" is an account enumeration oracle.
+ *
+ * Messages come from the translation catalogue via `getTranslations`, so the
+ * server speaks the same language as the page that called it.
  */
+
+async function limiterMessage(retryAfter: number): Promise<string> {
+  const t = await getTranslations("validation");
+  return t("rateLimited", { seconds: retryAfter });
+}
 
 // ---------------------------------------------------------------------------
 // Sign up
@@ -50,12 +61,12 @@ import {
 export async function signUpAction(
   input: unknown,
 ): Promise<ActionResult<{ email: string }>> {
-  const parsed = signUpSchema.safeParse(input);
+  const tv = await getTranslations("validation");
+  const te = await getTranslations("email");
+
+  const parsed = signUpSchema(resolver(tv)).safeParse(input);
   if (!parsed.success) {
-    return fail(
-      "Check the highlighted fields.",
-      zodFieldErrors(parsed.error.issues),
-    );
+    return fail(tv("checkFields"), zodFieldErrors(parsed.error.issues));
   }
 
   const { name, email, password, website } = parsed.data;
@@ -66,7 +77,10 @@ export async function signUpAction(
 
   const ip = await clientIp();
   const limit = await rateLimit("signup", ip);
-  if (!limit.success) return rateLimited(retryAfterSeconds(limit));
+  if (!limit.success) {
+    const retryAfter = retryAfterSeconds(limit);
+    return rateLimited(await limiterMessage(retryAfter), retryAfter);
+  }
 
   const existing = await prisma.user.findUnique({
     where: { email },
@@ -77,11 +91,10 @@ export async function signUpAction(
     // Do NOT say "already registered" — that confirms the address exists.
     // Instead send mail that is useful to whoever actually owns the inbox.
     if (!existing.passwordHash) {
-      // OAuth-only account. Tell the real owner to sign in with Google.
       await sendEmail(email, {
-        subject: "Sign in with Google",
-        html: `<p>Someone tried to create a password account for this address, but it is already registered through Google. Use <a href="${absoluteUrl("/login")}">Continue with Google</a> to sign in.</p>`,
-        text: `Someone tried to create a password account for this address, but it is already registered through Google. Sign in at ${absoluteUrl("/login")} using "Continue with Google".`,
+        subject: te("alreadyGoogle.subject"),
+        html: `<p>${te("alreadyGoogle.html", { url: absoluteUrl("/login") })}</p>`,
+        text: te("alreadyGoogle.text", { url: absoluteUrl("/login") }),
       });
     } else if (!existing.emailVerified) {
       // Unverified: re-send the confirmation so a genuine retry works.
@@ -91,13 +104,20 @@ export async function signUpAction(
         verificationEmail({
           name,
           url: absoluteUrl(`/verify-email?token=${token}`),
+          t: resolver(te),
         }),
       );
     } else {
       await sendEmail(email, {
-        subject: "You already have an account",
-        html: `<p>Someone tried to sign up with this address. You already have an account — <a href="${absoluteUrl("/login")}">sign in</a> or <a href="${absoluteUrl("/forgot-password")}">reset your password</a>.</p>`,
-        text: `Someone tried to sign up with this address. You already have an account. Sign in at ${absoluteUrl("/login")} or reset your password at ${absoluteUrl("/forgot-password")}.`,
+        subject: te("alreadyRegistered.subject"),
+        html: `<p>${te("alreadyRegistered.html", {
+          loginUrl: absoluteUrl("/login"),
+          resetUrl: absoluteUrl("/forgot-password"),
+        })}</p>`,
+        text: te("alreadyRegistered.text", {
+          loginUrl: absoluteUrl("/login"),
+          resetUrl: absoluteUrl("/forgot-password"),
+        }),
       });
     }
 
@@ -105,10 +125,7 @@ export async function signUpAction(
   }
 
   const passwordHash = await hashPassword(password);
-
-  await prisma.user.create({
-    data: { name, email, passwordHash },
-  });
+  await prisma.user.create({ data: { name, email, passwordHash } });
 
   const token = await createVerificationToken(email);
   await sendEmail(
@@ -116,6 +133,7 @@ export async function signUpAction(
     verificationEmail({
       name,
       url: absoluteUrl(`/verify-email?token=${token}`),
+      t: resolver(te),
     }),
   );
 
@@ -130,12 +148,12 @@ export async function signInAction(
   input: unknown,
   callbackUrl?: string,
 ): Promise<ActionResult<{ redirectTo: string }>> {
-  const parsed = signInSchema.safeParse(input);
+  const tv = await getTranslations("validation");
+  const ta = await getTranslations("auth.login");
+
+  const parsed = signInSchema(resolver(tv)).safeParse(input);
   if (!parsed.success) {
-    return fail(
-      "Check the highlighted fields.",
-      zodFieldErrors(parsed.error.issues),
-    );
+    return fail(tv("checkFields"), zodFieldErrors(parsed.error.issues));
   }
 
   const { email, password } = parsed.data;
@@ -145,20 +163,19 @@ export async function signInAction(
   // from one host.
   const ip = await clientIp();
   const limit = await rateLimit("login", `${ip}:${email}`);
-  if (!limit.success) return rateLimited(retryAfterSeconds(limit));
+  if (!limit.success) {
+    const retryAfter = retryAfterSeconds(limit);
+    return rateLimited(await limiterMessage(retryAfter), retryAfter);
+  }
 
   try {
-    await authSignIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    await authSignIn("credentials", { email, password, redirect: false });
   } catch (error) {
     // Auth.js signals navigation by throwing; that must not be swallowed here.
     unstable_rethrow(error);
     if (error instanceof AuthError) {
       // Deliberately identical for "no such user" and "wrong password".
-      return fail("That email or password is not right.");
+      return fail(ta("invalidCredentials"));
     }
     throw error;
   }
@@ -190,13 +207,12 @@ function safeRedirect(callbackUrl?: string): string {
 export async function verifyEmailAction(
   token: string,
 ): Promise<ActionResult<{ email: string }>> {
+  const t = await getTranslations("auth.verifyEmail");
   const result = await consumeVerificationToken(token);
 
   if (!result.ok) {
-    return fail(
-      result.reason === "expired"
-        ? "That link has expired. Request a new one below."
-        : "That link is not valid. It may already have been used.",
+    return failTokenInvalid(
+      result.reason === "expired" ? t("linkExpired") : t("linkInvalid"),
     );
   }
 
@@ -205,18 +221,22 @@ export async function verifyEmailAction(
     data: { emailVerified: new Date() },
   });
 
-  return ok({ email: result.email }, "Your email is confirmed.");
+  return ok({ email: result.email }, t("confirmedBody"));
 }
 
 export async function resendVerificationAction(): Promise<ActionResult> {
+  const t = await getTranslations("auth.verifyEmail");
+  const te = await getTranslations("email");
+
   const user = await requireUserOrThrow();
 
-  if (user.emailVerified) {
-    return fail("That address is already confirmed.");
-  }
+  if (user.emailVerified) return fail(t("alreadyConfirmed"));
 
   const limit = await rateLimit("passwordReset", `verify:${user.id}`);
-  if (!limit.success) return rateLimited(retryAfterSeconds(limit));
+  if (!limit.success) {
+    const retryAfter = retryAfterSeconds(limit);
+    return rateLimited(await limiterMessage(retryAfter), retryAfter);
+  }
 
   const token = await createVerificationToken(user.email);
   await sendEmail(
@@ -224,10 +244,11 @@ export async function resendVerificationAction(): Promise<ActionResult> {
     verificationEmail({
       name: user.name,
       url: absoluteUrl(`/verify-email?token=${token}`),
+      t: resolver(te),
     }),
   );
 
-  return ok(undefined, `Confirmation sent to ${user.email}.`);
+  return ok(undefined, t("resent", { email: user.email }));
 }
 
 // ---------------------------------------------------------------------------
@@ -237,19 +258,23 @@ export async function resendVerificationAction(): Promise<ActionResult> {
 export async function requestPasswordResetAction(
   input: unknown,
 ): Promise<ActionResult> {
-  const parsed = forgotPasswordSchema.safeParse(input);
+  const tv = await getTranslations("validation");
+  const ta = await getTranslations("auth.forgotPassword");
+  const te = await getTranslations("email");
+
+  const parsed = forgotPasswordSchema(resolver(tv)).safeParse(input);
   if (!parsed.success) {
-    return fail(
-      "Enter a valid email address.",
-      zodFieldErrors(parsed.error.issues),
-    );
+    return fail(tv("email.invalid"), zodFieldErrors(parsed.error.issues));
   }
 
   const { email } = parsed.data;
 
   const ip = await clientIp();
   const limit = await rateLimit("passwordReset", `${ip}:${email}`);
-  if (!limit.success) return rateLimited(retryAfterSeconds(limit));
+  if (!limit.success) {
+    const retryAfter = retryAfterSeconds(limit);
+    return rateLimited(await limiterMessage(retryAfter), retryAfter);
+  }
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -266,47 +291,49 @@ export async function requestPasswordResetAction(
       passwordResetEmail({
         name: user.name,
         url: absoluteUrl(`/reset-password?token=${token}`),
+        t: resolver(te),
       }),
     );
   }
 
-  return ok(
-    undefined,
-    "If that address has an account, a reset link is on its way.",
-  );
+  return ok(undefined, ta("sentIfExists"));
 }
 
 export async function resetPasswordAction(
   input: unknown,
 ): Promise<ActionResult> {
-  const parsed = resetPasswordSchema.safeParse(input);
+  const tv = await getTranslations("validation");
+  const ta = await getTranslations("auth.resetPassword");
+  const tl = await getTranslations("auth.login");
+
+  const parsed = resetPasswordSchema(resolver(tv)).safeParse(input);
   if (!parsed.success) {
-    return fail(
-      "Check the highlighted fields.",
-      zodFieldErrors(parsed.error.issues),
-    );
+    return fail(tv("checkFields"), zodFieldErrors(parsed.error.issues));
   }
 
   const { token, password } = parsed.data;
 
   const ip = await clientIp();
   const limit = await rateLimit("passwordReset", `reset:${ip}`);
-  if (!limit.success) return rateLimited(retryAfterSeconds(limit));
+  if (!limit.success) {
+    const retryAfter = retryAfterSeconds(limit);
+    return rateLimited(await limiterMessage(retryAfter), retryAfter);
+  }
 
   const lookup = await lookupPasswordResetToken(token);
   if (!lookup.ok) {
-    return fail(
+    return failTokenInvalid(
       lookup.reason === "expired"
-        ? "That link has expired. Request a new one."
-        : "That link is no longer valid. Request a new one.",
+        ? ta("reasonExpired")
+        : lookup.reason === "used"
+          ? ta("reasonUsed")
+          : ta("reasonInvalid"),
     );
   }
 
   // Consume first: if two submissions race, only one wins the update.
   const consumed = await consumePasswordResetToken(lookup.tokenId);
-  if (!consumed) {
-    return fail("That link has already been used. Request a new one.");
-  }
+  if (!consumed) return failTokenInvalid(ta("reasonUsed"));
 
   const passwordHash = await hashPassword(password);
 
@@ -325,5 +352,5 @@ export async function resetPasswordAction(
     prisma.session.deleteMany({ where: { userId: lookup.userId } }),
   ]);
 
-  return ok(undefined, "Your password has been changed. Sign in to continue.");
+  return ok(undefined, tl("passwordChanged"));
 }

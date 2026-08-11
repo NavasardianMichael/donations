@@ -5,14 +5,57 @@
  * and apply migrations first. They are excluded from the default `pnpm test`
  * run; use `pnpm test:db`.
  *
- * Two things are mocked, both because they only exist inside a request:
+ * Three things are mocked, because they only exist inside a request:
  *   - `next/headers`, for the rate limiter's client IP;
+ *   - `next-intl/server`, backed by the REAL message catalogue, so a missing
+ *     translation key fails the test instead of rendering a placeholder;
  *   - `@/lib/email`, so the test can read the token out of the message that
  *     would have been sent.
  */
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import messages from "../../../messages/hy.json";
+
 const sentEmails: { to: string; subject: string; text: string }[] = [];
+
+/**
+ * A translator over the real catalogue.
+ *
+ * Deliberately throws on a missing key. In the app a typo degrades to a
+ * warning; in a test it should be a hard failure, which makes these tests
+ * double as a check that every key the actions reference actually exists.
+ */
+function lookup(path: string): string {
+  const value = path
+    .split(".")
+    .reduce<unknown>(
+      (node, key) =>
+        node && typeof node === "object"
+          ? (node as Record<string, unknown>)[key]
+          : undefined,
+      messages,
+    );
+
+  if (typeof value !== "string") {
+    throw new Error(`Missing translation key: ${path}`);
+  }
+  return value;
+}
+
+function makeTranslator(namespace: string) {
+  const t = (key: string, values?: Record<string, string | number>) => {
+    let out = lookup(`${namespace}.${key}`);
+    for (const [name, value] of Object.entries(values ?? {})) {
+      out = out.replaceAll(`{${name}}`, String(value));
+    }
+    return out;
+  };
+  return t;
+}
+
+vi.mock("next-intl/server", () => ({
+  getTranslations: async (namespace: string) => makeTranslator(namespace),
+}));
 
 /**
  * The rate limiter keys on client IP and its in-memory buckets live for the

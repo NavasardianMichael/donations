@@ -1,8 +1,11 @@
+"use client";
+
 import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
+import { useUiLabels } from "./labels";
 import { Spinner } from "./spinner";
 
 const buttonVariants = cva(
@@ -77,6 +80,7 @@ export function Button({
   type,
   ...props
 }: ButtonProps) {
+  const labels = useUiLabels();
   const Comp = asChild ? Slot.Root : "button";
 
   // `asChild` hands rendering to the child, so the spinner swap does not apply.
@@ -108,7 +112,7 @@ export function Button({
         <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
           <Spinner size={size === "lg" ? "md" : "sm"} label={null} />
           {loadingText ? <span>{loadingText}</span> : null}
-          <span className="sr-only">Loading</span>
+          <span className="sr-only">{labels.loading}</span>
         </span>
       ) : null}
     </button>

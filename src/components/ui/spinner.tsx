@@ -1,6 +1,10 @@
+"use client";
+
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
+
+import { useUiLabels } from "./labels";
 
 const spinnerVariants = cva(
   "inline-block shrink-0 animate-spin rounded-full border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]",
@@ -25,20 +29,19 @@ export interface SpinnerProps
   label?: string | null;
 }
 
-export function Spinner({
-  className,
-  size,
-  label = "Loading",
-  ...props
-}: SpinnerProps) {
+export function Spinner({ className, size, label, ...props }: SpinnerProps) {
+  const labels = useUiLabels();
+  // Explicit null means decorative; undefined means "use the default".
+  const announced = label === null ? null : (label ?? labels.loading);
+
   return (
     <span
-      role={label ? "status" : undefined}
-      aria-live={label ? "polite" : undefined}
+      role={announced ? "status" : undefined}
+      aria-live={announced ? "polite" : undefined}
       className={cn(spinnerVariants({ size }), className)}
       {...props}
     >
-      {label ? <span className="sr-only">{label}</span> : null}
+      {announced ? <span className="sr-only">{announced}</span> : null}
     </span>
   );
 }

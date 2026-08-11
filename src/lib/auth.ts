@@ -8,6 +8,7 @@ import type { Adapter } from "next-auth/adapters";
 import { fakeVerifyPassword, verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { signInSchema } from "@/lib/validations/auth";
+import { silentResolver } from "@/lib/validations/resolver";
 
 declare module "next-auth" {
   interface Session {
@@ -72,7 +73,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
 
       async authorize(raw) {
-        const parsed = signInSchema.safeParse(raw);
+        // Messages are never surfaced here — authorize() returns null either way.
+        const parsed = signInSchema(silentResolver).safeParse(raw);
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;

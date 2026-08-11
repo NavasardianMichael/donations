@@ -25,8 +25,9 @@ const eslintConfig = defineConfig([
 
   /**
    * The UI library must stay self-contained. It may import `@/lib/utils` and
-   * nothing else from the app — that zero-coupling rule is what lets the
-   * folder lift out into its own package later.
+   * `@/lib/currency` — both pure, dependency-free formatting modules — and
+   * nothing else from the app. That zero-coupling rule is what lets the folder
+   * lift out into its own package later.
    */
   {
     files: ["src/components/ui/**/*.{ts,tsx}"],
@@ -40,14 +41,16 @@ const eslintConfig = defineConfig([
                 "@/app/*",
                 "@/server/*",
                 "@/generated/*",
+                "@/i18n/*",
                 "@/components/dashboard/*",
                 "@/components/donation/*",
                 "@/components/marketing/*",
                 "@/lib/*",
                 "!@/lib/utils",
+                "!@/lib/currency",
               ],
               message:
-                "components/ui is a self-contained library: only @/lib/utils may be imported from app code.",
+                "components/ui is a self-contained library: only @/lib/utils and @/lib/currency may be imported from app code. Text belongs in props, not in t() calls.",
             },
           ],
         },

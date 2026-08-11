@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+
+import type { Metadata } from "next";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { Alert } from "@/components/ui";
@@ -7,26 +9,14 @@ import { AUTH_ERRORS } from "@/lib/auth";
 
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = {
-  title: "Log in",
-  description: "Log in to manage your GiveDirect pages.",
-  robots: { index: false, follow: false },
-};
-
-/**
- * Auth.js redirects failures back here with `?error=`. Anything not listed
- * falls through to a generic message — never echo the raw code at the user.
- */
-const ERROR_MESSAGES: Record<string, string> = {
-  [AUTH_ERRORS.linkBlocked]:
-    "An account with this email already exists and has not been confirmed. Log in with your password, or confirm your email first, then connect Google.",
-  [AUTH_ERRORS.unverifiedProviderEmail]:
-    "Google has not verified that email address, so we cannot use it to sign in.",
-  OAuthAccountNotLinked:
-    "That email is already registered with a different sign-in method. Use the method you signed up with.",
-  AccessDenied: "Sign-in was cancelled or denied.",
-  Verification: "That link is no longer valid. Request a new one.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth.login");
+  return {
+    title: t("submit"),
+    description: t("subtitle"),
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function LoginPage(props: {
   searchParams: Promise<{
@@ -37,28 +27,41 @@ export default async function LoginPage(props: {
   }>;
 }) {
   const searchParams = await props.searchParams;
+  const t = await getTranslations("auth");
+
+  /**
+   * Auth.js redirects failures back here with `?error=`. Anything not listed
+   * falls through to a generic message — never echo the raw code at the user.
+   */
+  const errorMessages: Record<string, string> = {
+    [AUTH_ERRORS.linkBlocked]: t("errors.linkBlocked"),
+    [AUTH_ERRORS.unverifiedProviderEmail]: t("errors.unverifiedProviderEmail"),
+    OAuthAccountNotLinked: t("errors.accountNotLinked"),
+    AccessDenied: t("errors.accessDenied"),
+    Verification: t("errors.verification"),
+  };
+
   const errorMessage = searchParams.error
-    ? (ERROR_MESSAGES[searchParams.error] ??
-      "Something went wrong signing you in. Try again.")
+    ? (errorMessages[searchParams.error] ?? t("errors.generic"))
     : null;
 
   const noticeMessage = searchParams.reset
-    ? "Your password has been changed. Log in with your new password."
+    ? t("login.passwordChanged")
     : searchParams.verified
-      ? "Your email is confirmed. Log in to continue."
+      ? t("login.emailConfirmed")
       : null;
 
   return (
     <AuthCard
-      subtitle="Log in to manage your impact."
+      subtitle={t("login.subtitle")}
       footer={
         <>
-          Don&apos;t have an account?{" "}
+          {t("login.noAccount")}{" "}
           <Link
             href="/signup"
             className="font-semibold text-brand hover:underline"
           >
-            Sign up
+            {t("login.signUpLink")}
           </Link>
         </>
       }

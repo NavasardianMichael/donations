@@ -15,7 +15,13 @@ import { headers } from "next/headers";
  */
 
 export type RateLimitName =
-  "login" | "signup" | "passwordReset" | "contact" | "track" | "slugCheck";
+  | "login"
+  | "signup"
+  | "passwordReset"
+  | "contact"
+  | "track"
+  | "slugCheck"
+  | "checkout";
 
 interface Rule {
   /** Requests allowed per window. */
@@ -33,6 +39,9 @@ const RULES: Record<RateLimitName, Rule> = {
   // Loose: one legitimate visitor can trip a tight limit here.
   track: { limit: 60, windowSeconds: 60 },
   slugCheck: { limit: 40, windowSeconds: 60 },
+  // A real donor never needs more than a couple of attempts; this mainly
+  // stops a script from mass-registering orders at the gateway.
+  checkout: { limit: 6, windowSeconds: 300 },
 };
 
 export interface RateLimitResult {

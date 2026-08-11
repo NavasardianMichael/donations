@@ -2,7 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useMemo, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { GoogleButton } from "@/components/auth/google-button";
@@ -15,13 +16,14 @@ import {
   SeparatorWithLabel,
   Text,
 } from "@/components/ui";
-import { signUpAction } from "@/server/actions/auth";
+import { cn } from "@/lib/utils";
+import { resolver } from "@/lib/validations/resolver";
 import {
   passwordStrength,
   signUpSchema,
   type SignUpInput,
 } from "@/lib/validations/auth";
-import { cn } from "@/lib/utils";
+import { signUpAction } from "@/server/actions/auth";
 
 const STRENGTH_STYLES = [
   "bg-strong",
@@ -32,9 +34,11 @@ const STRENGTH_STYLES = [
 ] as const;
 
 function StrengthMeter({ password }: { password: string }) {
+  const t = useTranslations("auth.strength");
+
   if (!password) return null;
 
-  const { score, label } = passwordStrength(password);
+  const { score, key } = passwordStrength(password);
 
   return (
     <div className="mt-2 space-y-1.5">
@@ -50,16 +54,25 @@ function StrengthMeter({ password }: { password: string }) {
         ))}
       </div>
       <p className="text-xs text-muted" aria-live="polite">
-        Password strength: {label}
+        {t("label", { level: t(key) })}
       </p>
     </div>
   );
 }
 
 export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
+  const t = useTranslations("auth");
+  const tCommon = useTranslations("common");
+  const tValidation = useTranslations("validation");
+
   const [pending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+
+  const schema = useMemo(
+    () => signUpSchema(resolver(tValidation)),
+    [tValidation],
+  );
 
   const {
     register,
@@ -68,7 +81,7 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
     setError,
     formState: { errors },
   } = useForm<SignUpInput>({
-    resolver: zodResolver(signUpSchema),
+    resolver: zodResolver(schema),
     defaultValues: { name: "", email: "", password: "", website: "" },
   });
 
@@ -108,15 +121,15 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
           <CheckCircle2 className="size-6 text-success" aria-hidden="true" />
         </span>
         <Heading level={2} size="md">
-          Check your inbox
+          {t("signup.checkInbox")}
         </Heading>
         <Text variant="muted" size="sm">
-          We sent a confirmation link to{" "}
-          <span className="font-medium text-fg">{sentTo}</span>. Click it to
-          finish setting up your account.
+          {t.rich("signup.confirmationSent", {
+            email: () => <span className="font-medium text-fg">{sentTo}</span>,
+          })}
         </Text>
         <Text variant="faint" size="xs">
-          Nothing after a minute or two? Check your spam folder.
+          {t("signup.checkSpam")}
         </Text>
       </div>
     );
@@ -126,10 +139,10 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
     <div className="space-y-6">
       <GoogleButton
         callbackUrl={callbackUrl ?? "/dashboard"}
-        label="Sign up with Google"
+        label={t("signup.googleLabel")}
       />
 
-      <SeparatorWithLabel>or</SeparatorWithLabel>
+      <SeparatorWithLabel>{tCommon("or")}</SeparatorWithLabel>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         {formError ? (
@@ -153,28 +166,28 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
           />
         </div>
 
-        <Field label="Name" error={errors.name?.message} required>
+        <Field label={t("fields.name")} error={errors.name?.message} required>
           <Input
             autoComplete="name"
-            placeholder="Alex Smith"
+            placeholder={t("fields.namePlaceholder")}
             {...register("name")}
           />
         </Field>
 
-        <Field label="Email" error={errors.email?.message} required>
+        <Field label={t("fields.email")} error={errors.email?.message} required>
           <Input
             type="email"
             autoComplete="email"
-            placeholder="name@example.com"
+            placeholder={t("fields.emailPlaceholder")}
             {...register("email")}
           />
         </Field>
 
         <div>
           <Field
-            label="Password"
+            label={t("fields.password")}
             error={errors.password?.message}
-            description="At least 10 characters, with upper and lower case and a number."
+            description={t("fields.passwordHint")}
             required
           >
             <Input
@@ -188,7 +201,7 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
         </div>
 
         <Button type="submit" size="lg" fullWidth loading={pending}>
-          Create account
+          {t("signup.submit")}
         </Button>
       </form>
     </div>

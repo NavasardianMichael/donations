@@ -6,12 +6,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 import { Button, type ButtonProps } from "./button";
+import { useUiLabels } from "./labels";
 
 export interface CopyButtonProps extends Omit<
   ButtonProps,
   "onClick" | "children"
 > {
   value: string;
+  /** Defaults to the provided UI labels. */
   label?: string;
   copiedLabel?: string;
   /** Icon only — used inside code panels where the label would crowd. */
@@ -20,14 +22,18 @@ export interface CopyButtonProps extends Omit<
 
 export function CopyButton({
   value,
-  label = "Copy",
-  copiedLabel = "Copied",
+  label,
+  copiedLabel,
   iconOnly = false,
   variant = "ghost",
   size = "sm",
   className,
   ...props
 }: CopyButtonProps) {
+  const labels = useUiLabels();
+  const copyText = label ?? labels.copy;
+  const copiedText = copiedLabel ?? labels.copied;
+
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -73,12 +79,12 @@ export function CopyButton({
         <Copy aria-hidden="true" />
       )}
       {iconOnly ? (
-        <span className="sr-only">{copied ? copiedLabel : label}</span>
+        <span className="sr-only">{copied ? copiedText : copyText}</span>
       ) : (
-        <span>{copied ? copiedLabel : label}</span>
+        <span>{copied ? copiedText : copyText}</span>
       )}
       <span aria-live="polite" className="sr-only">
-        {copied ? `${copiedLabel} to clipboard` : ""}
+        {copied ? labels.copiedToClipboard : ""}
       </span>
     </Button>
   );

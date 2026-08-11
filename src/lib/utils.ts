@@ -1,59 +1,38 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+import { DEFAULT_LOCALE } from "./currency";
+
 /** Merge Tailwind classes with conflict resolution. */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /**
- * Render integer minor units as currency. The ONLY place cents become a
- * human-readable string.
+ * Money formatting lives in `./currency` — re-exported here so the UI library,
+ * which may only reach for `@/lib/utils` and `@/lib/currency`, keeps a single
+ * import for the common case.
  */
-export function formatCurrency(
-  amountCents: number,
-  currency = "usd",
-  options: Intl.NumberFormatOptions = {},
-): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-    minimumFractionDigits: amountCents % 100 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-    ...options,
-  }).format(amountCents / 100);
-}
-
-/** Always shows cents. For receipts, tables, and anywhere precision matters. */
-export function formatCurrencyExact(
-  amountCents: number,
-  currency = "usd",
-): string {
-  return formatCurrency(amountCents, currency, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-/** "$89.2K" — for dense dashboard tiles where the full number does not fit. */
-export function formatCurrencyCompact(
-  amountCents: number,
-  currency = "usd",
-): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(amountCents / 100);
-}
+export {
+  CURRENCIES,
+  DEFAULT_CURRENCY,
+  DEFAULT_LOCALE,
+  currencyMeta,
+  formatMoney,
+  formatMoneyCompact,
+  formatMoneyPlain,
+  parseMoneyToMinor,
+  toMajor,
+  toMinor,
+  type CurrencyCode,
+} from "./currency";
 
 export function formatNumber(value: number): string {
-  return new Intl.NumberFormat("en-US").format(value);
+  return new Intl.NumberFormat(DEFAULT_LOCALE).format(value);
 }
 
 export function formatPercent(value: number, fractionDigits = 1): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(DEFAULT_LOCALE, {
     style: "percent",
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
@@ -61,22 +40,79 @@ export function formatPercent(value: number, fractionDigits = 1): string {
 }
 
 /**
- * Parse a user-typed dollar amount into integer cents.
- * Returns null for anything that isn't a clean money value.
+ * Eastern Armenian → Latin, following the BGN/PCGN romanisation that Armenian
+ * readers recognise in URLs.
  */
-export function parseAmountToCents(input: string): number | null {
-  const cleaned = input.trim().replace(/[$,\s]/g, "");
-  if (cleaned === "" || !/^\d*(\.\d{0,2})?$/.test(cleaned)) return null;
+const ARMENIAN_TO_LATIN: Record<string, string> = {
+  ա: "a",
+  բ: "b",
+  գ: "g",
+  դ: "d",
+  ե: "e",
+  զ: "z",
+  է: "e",
+  ը: "y",
+  թ: "t",
+  ժ: "zh",
+  ի: "i",
+  լ: "l",
+  խ: "kh",
+  ծ: "ts",
+  կ: "k",
+  հ: "h",
+  ձ: "dz",
+  ղ: "gh",
+  ճ: "ch",
+  մ: "m",
+  յ: "y",
+  ն: "n",
+  շ: "sh",
+  ո: "o",
+  չ: "ch",
+  պ: "p",
+  ջ: "j",
+  ռ: "r",
+  ս: "s",
+  վ: "v",
+  տ: "t",
+  ր: "r",
+  ց: "ts",
+  ւ: "v",
+  փ: "p",
+  ք: "q",
+  օ: "o",
+  ֆ: "f",
+  և: "ev",
+  ու: "u",
+};
 
-  const value = Number(cleaned);
-  if (!Number.isFinite(value) || value < 0) return null;
+function transliterateArmenian(input: string): string {
+  const lower = input.toLowerCase();
+  let result = "";
 
-  return Math.round(value * 100);
+  for (let i = 0; i < lower.length; i++) {
+    // "ու" is a digraph for /u/ and must be matched before the bare "ո".
+    const pair = lower.slice(i, i + 2);
+    if (ARMENIAN_TO_LATIN[pair]) {
+      result += ARMENIAN_TO_LATIN[pair];
+      i++;
+      continue;
+    }
+    result += ARMENIAN_TO_LATIN[lower[i]!] ?? lower[i];
+  }
+
+  return result;
 }
 
-/** URL-safe slug. Mirrored by the Zod slug schema in lib/validations. */
+/**
+ * URL-safe slug.
+ *
+ * Armenian is transliterated rather than stripped, so a page titled
+ * "Մաքուր ջուր" becomes `maqur-jur` instead of an empty string. Mirrored by
+ * the Zod slug schema in lib/validations.
+ */
 export function slugify(input: string): string {
-  return input
+  return transliterateArmenian(input)
     .normalize("NFKD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
@@ -87,7 +123,7 @@ export function slugify(input: string): string {
     .replace(/-+$/g, "");
 }
 
-/** "JS" from "Jane Smith". Falls back to "?" so avatars never render empty. */
+/** "ԱՀ" from "Անի Հակոբյան". Falls back to "?" so avatars never render empty. */
 export function initials(name?: string | null): string {
   if (!name) return "?";
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -104,7 +140,9 @@ export function formatDate(
     year: "numeric",
   },
 ): string {
-  return new Intl.DateTimeFormat("en-US", options).format(new Date(date));
+  return new Intl.DateTimeFormat(DEFAULT_LOCALE, options).format(
+    new Date(date),
+  );
 }
 
 export function formatDateTime(date: Date | string): string {
@@ -117,13 +155,13 @@ export function formatDateTime(date: Date | string): string {
   });
 }
 
-/** "2 hours ago". Used in the dashboard activity feeds. */
+/** "2 ժամ առաջ". Used in the dashboard activity feeds. */
 export function formatRelativeTime(date: Date | string): string {
   const target = new Date(date).getTime();
   const diffSeconds = Math.round((target - Date.now()) / 1000);
   const abs = Math.abs(diffSeconds);
 
-  const rtf = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat(DEFAULT_LOCALE, { numeric: "auto" });
 
   if (abs < 60) return rtf.format(Math.round(diffSeconds), "second");
   if (abs < 3600) return rtf.format(Math.round(diffSeconds / 60), "minute");

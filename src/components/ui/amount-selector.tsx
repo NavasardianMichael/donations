@@ -2,26 +2,33 @@
 
 import { useId, useMemo, useState } from "react";
 
-import { cn, formatCurrency, parseAmountToCents } from "@/lib/utils";
+import {
+  cn,
+  currencyMeta,
+  formatMoney,
+  parseMoneyToMinor,
+  toMajor,
+} from "@/lib/utils";
 
 import { inputBase } from "./input";
+import { useUiLabels } from "./labels";
 
 export interface AmountSelectorProps {
-  /** Preset chips, in minor units. */
+  /** Preset chips, in integer minor units. */
   suggestedAmounts: number[];
   /** Controlled value in minor units, or null when nothing is chosen. */
   value: number | null;
-  onChange: (amountCents: number | null) => void;
+  onChange: (amountMinor: number | null) => void;
   currency?: string;
   allowCustomAmount?: boolean;
-  minAmountCents?: number;
-  maxAmountCents?: number;
+  minAmountMinor?: number;
+  maxAmountMinor?: number;
   disabled?: boolean;
   /** Rendered under the custom input. */
   error?: string | null;
   className?: string;
   size?: "md" | "lg";
-  /** Accessible name for the chip group. */
+  /** Accessible name for the chip group. Defaults to the provided UI labels. */
   label?: string;
 }
 
@@ -36,16 +43,17 @@ export function AmountSelector({
   suggestedAmounts,
   value,
   onChange,
-  currency = "usd",
+  currency = "amd",
   allowCustomAmount = true,
-  minAmountCents = 100,
-  maxAmountCents,
+  minAmountMinor = 10000,
+  maxAmountMinor,
   disabled = false,
   error,
   className,
   size = "md",
-  label = "Select amount",
+  label,
 }: AmountSelectorProps) {
+  const labels = useUiLabels();
   const groupName = useId();
   const customId = `${groupName}-custom`;
   const errorId = `${groupName}-error`;
@@ -57,7 +65,9 @@ export function AmountSelector({
   );
 
   const [customText, setCustomText] = useState(() =>
-    value !== null && !presets.includes(value) ? (value / 100).toString() : "",
+    value !== null && !presets.includes(value)
+      ? String(toMajor(value, currency))
+      : "",
   );
 
   const isCustomActive = value !== null && !presets.includes(value);
@@ -69,15 +79,14 @@ export function AmountSelector({
 
   function handleCustomChange(next: string) {
     setCustomText(next);
-    const cents = parseAmountToCents(next);
-    onChange(cents);
+    onChange(parseMoneyToMinor(next, currency));
   }
 
   return (
     <div className={cn("space-y-3", className)}>
       <div
         role="radiogroup"
-        aria-label={label}
+        aria-label={label ?? labels.selectAmount}
         className={cn(
           "grid gap-2",
           presets.length >= 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3",
@@ -103,7 +112,7 @@ export function AmountSelector({
                   : "border-subtle bg-surface text-fg hover:border-accent-border hover:bg-accent-subtle",
               )}
             >
-              {formatCurrency(amount, currency)}
+              {formatMoney(amount, currency)}
             </button>
           );
         })}
@@ -112,21 +121,21 @@ export function AmountSelector({
       {allowCustomAmount ? (
         <div>
           <label htmlFor={customId} className="sr-only">
-            Custom amount
+            {labels.customAmount}
           </label>
           <div className="relative">
             <span
               aria-hidden="true"
               className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-base font-medium text-muted"
             >
-              $
+              {currencyMeta(currency).symbol}
             </span>
             <input
               id={customId}
               type="text"
               inputMode="decimal"
               autoComplete="off"
-              placeholder="Custom amount"
+              placeholder={labels.customAmount}
               value={customText}
               disabled={disabled}
               aria-invalid={error ? true : undefined}
@@ -134,7 +143,7 @@ export function AmountSelector({
               onChange={(e) => handleCustomChange(e.target.value)}
               className={cn(
                 inputBase({ inputSize: size === "md" ? "md" : "lg" }),
-                "pl-8",
+                "pl-9",
                 isCustomActive && "border-accent",
               )}
             />
@@ -152,10 +161,12 @@ export function AmountSelector({
         </p>
       ) : (
         <p className="text-xs text-muted">
-          Minimum {formatCurrency(minAmountCents, currency)}
-          {maxAmountCents
-            ? ` · maximum ${formatCurrency(maxAmountCents, currency)}`
-            : ""}
+          {maxAmountMinor
+            ? labels.minimumAndMaximum(
+                formatMoney(minAmountMinor, currency),
+                formatMoney(maxAmountMinor, currency),
+              )
+            : labels.minimum(formatMoney(minAmountMinor, currency))}
         </p>
       )}
     </div>

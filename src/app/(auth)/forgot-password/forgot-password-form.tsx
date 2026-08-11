@@ -2,20 +2,30 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MailCheck } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 
 import { Alert, Button, Field, Heading, Input, Text } from "@/components/ui";
-import { requestPasswordResetAction } from "@/server/actions/auth";
+import { resolver } from "@/lib/validations/resolver";
 import {
   forgotPasswordSchema,
   type ForgotPasswordInput,
 } from "@/lib/validations/auth";
+import { requestPasswordResetAction } from "@/server/actions/auth";
 
 export function ForgotPasswordForm() {
+  const t = useTranslations("auth");
+  const tValidation = useTranslations("validation");
+
   const [pending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+
+  const schema = useMemo(
+    () => forgotPasswordSchema(resolver(tValidation)),
+    [tValidation],
+  );
 
   const {
     register,
@@ -23,7 +33,7 @@ export function ForgotPasswordForm() {
     getValues,
     formState: { errors },
   } = useForm<ForgotPasswordInput>({
-    resolver: zodResolver(forgotPasswordSchema),
+    resolver: zodResolver(schema),
     defaultValues: { email: "" },
   });
 
@@ -48,11 +58,14 @@ export function ForgotPasswordForm() {
           <MailCheck className="size-6 text-success" aria-hidden="true" />
         </span>
         <Heading level={2} size="md">
-          Check your inbox
+          {t("forgotPassword.checkInbox")}
         </Heading>
         <Text variant="muted" size="sm">
-          If <span className="font-medium text-fg">{getValues("email")}</span>{" "}
-          has an account, a reset link is on its way. It expires in one hour.
+          {t.rich("forgotPassword.sentIfExists", {
+            email: () => (
+              <span className="font-medium text-fg">{getValues("email")}</span>
+            ),
+          })}
         </Text>
       </div>
     );
@@ -67,20 +80,20 @@ export function ForgotPasswordForm() {
       ) : null}
 
       <Field
-        label="Email"
+        label={t("fields.email")}
         error={errors.email?.message}
-        description="We'll send a link to choose a new password."
+        description={t("forgotPassword.description")}
       >
         <Input
           type="email"
           autoComplete="email"
-          placeholder="name@example.com"
+          placeholder={t("fields.emailPlaceholder")}
           {...register("email")}
         />
       </Field>
 
       <Button type="submit" size="lg" fullWidth loading={pending}>
-        Send reset link
+        {t("forgotPassword.submit")}
       </Button>
     </form>
   );

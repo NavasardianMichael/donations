@@ -47,7 +47,7 @@ export function Stat({
       {...props}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold tracking-[0.05em] text-muted uppercase">
+        <p className="text-xs font-semibold tracking-wider text-muted uppercase">
           {label}
         </p>
         {Icon ? (

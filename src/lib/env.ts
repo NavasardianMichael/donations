@@ -17,8 +17,20 @@ const serverSchema = z.object({
   AUTH_GOOGLE_ID: z.string().optional(),
   AUTH_GOOGLE_SECRET: z.string().optional(),
 
-  // No payment provider is configured. When one is added, its keys are
-  // declared here and validated at boot like everything else.
+  /**
+   * ArCa (Armenian Card) — https://ipay.arca.am/payment/rest/
+   *
+   * Credentials come from the acquiring bank (Ameriabank, ACBA, Inecobank…),
+   * not from ArCa directly, and are supplied per merchant. All three are
+   * optional here on purpose: without them the app runs with the Donate
+   * button disabled rather than failing to boot — see
+   * `src/lib/payments/arca.ts` for the guard this backs.
+   */
+  ARCA_USERNAME: z.string().optional(),
+  ARCA_PASSWORD: z.string().optional(),
+  // "test" hits ipaytest.arca.am:8445; "production" hits ipay.arca.am. Never
+  // let a misconfigured env default to live charges.
+  ARCA_ENV: z.enum(["test", "production"]).default("test"),
 
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("GiveDirect <noreply@example.com>"),

@@ -5,6 +5,8 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
+import { useUiLabels } from "./labels";
+
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogClose = DialogPrimitive.Close;
@@ -42,6 +44,8 @@ function DialogContent({
   hideClose = false,
   ...props
 }: DialogContentProps) {
+  const labels = useUiLabels();
+
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -70,7 +74,7 @@ function DialogContent({
             )}
           >
             <X className="size-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{labels.close}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>

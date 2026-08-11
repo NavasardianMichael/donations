@@ -35,7 +35,7 @@ export function SeparatorWithLabel({
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <span className="h-px flex-1 bg-subtle" />
-      <span className="text-xs font-medium tracking-[0.05em] text-muted uppercase">
+      <span className="text-xs font-medium tracking-wider text-muted uppercase">
         {children}
       </span>
       <span className="h-px flex-1 bg-subtle" />

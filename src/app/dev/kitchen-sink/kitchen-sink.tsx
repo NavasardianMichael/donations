@@ -106,7 +106,7 @@ import {
   Tooltip,
   TooltipProvider,
 } from "@/components/ui";
-import { formatCurrency } from "@/lib/utils";
+import { formatMoney } from "@/lib/utils";
 
 const BUTTON_VARIANTS = [
   "primary",
@@ -159,7 +159,7 @@ function Row({
 
 export function KitchenSink() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [amount, setAmount] = useState<number | null>(2500);
+  const [amount, setAmount] = useState<number | null>(500000);
   const [page, setPage] = useState(3);
   const [checked, setChecked] = useState(true);
   const [sliderValue, setSliderValue] = useState([40]);
@@ -301,7 +301,7 @@ export function KitchenSink() {
           <Row label="Full width">
             <div className="w-full max-w-sm">
               <Button fullWidth size="lg">
-                Donate {formatCurrency(amount ?? 0)} now
+                Donate {formatMoney(amount ?? 0)} now
               </Button>
             </div>
           </Row>
@@ -632,14 +632,14 @@ export function KitchenSink() {
                 </DialogHeader>
                 <DialogBody>
                   <AmountSelector
-                    suggestedAmounts={[1000, 2500, 5000]}
+                    suggestedAmounts={[100000, 500000, 1000000]}
                     value={amount}
                     onChange={setAmount}
                   />
                 </DialogBody>
                 <DialogFooter>
                   <Button fullWidth size="lg">
-                    Donate {formatCurrency(amount ?? 0)} now
+                    Donate {formatMoney(amount ?? 0)} now
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -768,9 +768,7 @@ export function KitchenSink() {
                         <span className="font-medium">{name}</span>
                       </div>
                     </TableCell>
-                    <TableCell numeric>
-                      {formatCurrency(Number(cents))}
-                    </TableCell>
+                    <TableCell numeric>{formatMoney(Number(cents))}</TableCell>
                     <TableCell className="text-muted">{date}</TableCell>
                     <TableCell>
                       <Badge
@@ -848,17 +846,17 @@ export function KitchenSink() {
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-4">
               <Eyebrow>Progress bar</Eyebrow>
-              <ProgressBar valueCents={1245000} goalCents={5000000} />
+              <ProgressBar valueMinor={124500000} goalMinor={500000000} />
               <ProgressBar
-                valueCents={8920000}
-                goalCents={10000000}
+                valueMinor={892000000}
+                goalMinor={1000000000}
                 size="lg"
               />
-              <ProgressBar valueCents={0} goalCents={10000000} size="sm" />
+              <ProgressBar valueMinor={0} goalMinor={1000000000} size="sm" />
               <ProgressBar
                 inline
-                valueCents={1245000}
-                goalCents={5000000}
+                valueMinor={124500000}
+                goalMinor={500000000}
                 label="Raised"
               />
             </div>
@@ -866,20 +864,20 @@ export function KitchenSink() {
             <div className="space-y-4">
               <Eyebrow>Amount selector</Eyebrow>
               <AmountSelector
-                suggestedAmounts={[1000, 2500, 5000]}
+                suggestedAmounts={[100000, 500000, 1000000]}
                 value={amount}
                 onChange={setAmount}
                 size="lg"
               />
               <AmountSelector
-                suggestedAmounts={[500, 1000, 2500, 10000]}
+                suggestedAmounts={[50000, 100000, 250000, 1000000]}
                 value={null}
                 onChange={() => {}}
                 allowCustomAmount={false}
               />
               <AmountSelector
-                suggestedAmounts={[1000, 2500, 5000]}
-                value={50}
+                suggestedAmounts={[100000, 500000, 1000000]}
+                value={5000}
                 onChange={() => {}}
                 error="Minimum donation is $1.00"
               />

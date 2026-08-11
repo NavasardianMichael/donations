@@ -14,6 +14,12 @@ export type ActionResult<T = void> =
       fieldErrors?: Record<string, string>;
       /** Set when the caller was rate limited, in seconds. */
       retryAfter?: number;
+      /**
+       * The one-time token backing this form is dead — expired, already used,
+       * or never issued. A flag, not a string match: the message is localised
+       * and sniffing its text would break the moment it is translated.
+       */
+      tokenInvalid?: boolean;
     };
 
 export function ok<T>(data: T, message?: string): ActionResult<T> {
@@ -27,12 +33,20 @@ export function fail(
   return { ok: false, message, fieldErrors };
 }
 
-export function rateLimited(retryAfter: number): ActionResult<never> {
-  return {
-    ok: false,
-    message: `Too many attempts. Try again in ${retryAfter} second${retryAfter === 1 ? "" : "s"}.`,
-    retryAfter,
-  };
+/** A dead one-time token. The form swaps to a "request a new link" state. */
+export function failTokenInvalid(message: string): ActionResult<never> {
+  return { ok: false, message, tokenInvalid: true };
+}
+
+/**
+ * The message must be supplied by the caller — it comes from the translation
+ * catalogue, and this module has no access to a translator.
+ */
+export function rateLimited(
+  message: string,
+  retryAfter: number,
+): ActionResult<never> {
+  return { ok: false, message, retryAfter };
 }
 
 /** Flatten a Zod error into the `fieldErrors` shape. */

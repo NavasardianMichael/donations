@@ -1,9 +1,9 @@
 /**
  * THE single source of truth for money math.
  *
- * Every amount in this file — and in the database — is an integer number of
- * minor units (cents). Never floats. Format only at the render boundary with
- * `formatCurrency()`.
+ * Every amount here — and in the database — is an integer number of MINOR
+ * units: luma for AMD, cents for USD. Never floats. Display conversion (and
+ * the fact that Armenians quote whole drams) lives in `src/lib/currency.ts`.
  *
  * NO PAYMENT PROVIDER IS WIRED UP. Nothing here moves money; these functions
  * exist so the fee shown on the donation-terms page, the creator dashboard and
@@ -11,7 +11,7 @@
  *
  * When a processor is added it introduces a SECOND, separate fee (typically a
  * percentage plus a flat amount per transaction) and a decision about who
- * absorbs it. That belongs here, next to `platformFeeCents`, and nowhere else.
+ * absorbs it. That belongs here, next to `platformFeeMinor`, and nowhere else.
  */
 
 /** Our cut of every donation, in percent. Overridable via env. */
@@ -20,13 +20,18 @@ export const PLATFORM_FEE_PERCENT = clampPercent(
 );
 
 /**
- * Smallest donation we accept. Card networks make sub-dollar charges
- * uneconomic, so this stays at $1.00 even without a processor attached.
+ * Smallest donation we accept, in minor units: 100 ֏.
+ *
+ * Below this the platform fee rounds to a couple of luma and the record costs
+ * more to store than it is worth.
  */
-export const ABSOLUTE_MIN_AMOUNT_CENTS = 100;
+export const ABSOLUTE_MIN_AMOUNT_MINOR = 100_00;
 
-/** Guardrail so a fat-fingered custom amount cannot create a $9,999,999 charge. */
-export const MAX_AMOUNT_CENTS = 1_000_000; // $10,000.00
+/**
+ * Guardrail so a fat-fingered custom amount cannot create a 99 999 999 ֏
+ * donation: 10 000 000 ֏.
+ */
+export const MAX_AMOUNT_MINOR = 10_000_000_00;
 
 function clampPercent(value: number): number {
   if (!Number.isFinite(value) || value < 0) return 5;
@@ -36,21 +41,21 @@ function clampPercent(value: number): number {
 /**
  * Our platform fee for a donation.
  *
- * `Math.round` — truncating loses us a cent on most transactions, and rounding
- * half-up matches the invoice a creator would compute by hand.
+ * `Math.round` — truncating loses us value on most transactions, and rounding
+ * half-up matches the arithmetic a creator would do by hand.
  */
-export function platformFeeCents(amountCents: number): number {
-  assertWholeCents(amountCents);
-  return Math.round((amountCents * PLATFORM_FEE_PERCENT) / 100);
+export function platformFeeMinor(amountMinor: number): number {
+  assertWholeMinor(amountMinor);
+  return Math.round((amountMinor * PLATFORM_FEE_PERCENT) / 100);
 }
 
 export interface FeeBreakdown {
   /** What the donor gives. */
-  grossCents: number;
+  grossMinor: number;
   /** Our cut. */
-  platformFeeCents: number;
+  platformFeeMinor: number;
   /** What the creator is owed. */
-  netToCreatorCents: number;
+  netToCreatorMinor: number;
 }
 
 /**
@@ -58,19 +63,19 @@ export interface FeeBreakdown {
  * the donation-terms page, the dashboard and the donation history can never
  * drift apart.
  */
-export function feeBreakdown(amountCents: number): FeeBreakdown {
-  const fee = platformFeeCents(amountCents);
+export function feeBreakdown(amountMinor: number): FeeBreakdown {
+  const fee = platformFeeMinor(amountMinor);
   return {
-    grossCents: amountCents,
-    platformFeeCents: fee,
-    netToCreatorCents: amountCents - fee,
+    grossMinor: amountMinor,
+    platformFeeMinor: fee,
+    netToCreatorMinor: amountMinor - fee,
   };
 }
 
-function assertWholeCents(amountCents: number): void {
-  if (!Number.isInteger(amountCents) || amountCents < 0) {
+function assertWholeMinor(amountMinor: number): void {
+  if (!Number.isInteger(amountMinor) || amountMinor < 0) {
     throw new Error(
-      `Amounts must be non-negative integer cents, received: ${amountCents}`,
+      `Amounts must be non-negative integer minor units, received: ${amountMinor}`,
     );
   }
 }
