@@ -1,26 +1,310 @@
 @import "tailwindcss";
+/* Enter/exit keyframes for Radix `data-[state]` transitions. */
+@import "tw-animate-css";
+
+/* next-themes toggles `class="dark"` on <html>; Tailwind v4 defaults to the
+   prefers-color-scheme media query, so redefine the variant. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens — "Kinetic Clarity"
+
+   Minimalist / corporate-modern. A neutral canvas so that exactly one accent
+   (#FF5722) can carry every high-intent action. Depth comes from tonal layers
+   and 1px outlines, never from heavy shadows.
+
+   Semantic names only. App code must never reference a raw palette value
+   (`bg-orange-500` is a bug); it references a role (`bg-accent`).
+--------------------------------------------------------------------------- */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Surfaces — level 0 is the canvas, level 1 is a card on top of it. */
+  --canvas: #f9f9f9;
+  --canvas-inset: #f3f3f4;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f5f5f5;
+  --surface-hover: #f3f3f4;
+  --surface-active: #eeeeee;
+  --surface-inverted: #2f3131;
+
+  /* Foreground */
+  --fg: #1a1c1c;
+  --fg-muted: #5d5f5f;
+  --fg-subtle: #8a8c8c;
+  --fg-inverted: #f0f1f1;
+  --fg-on-accent: #ffffff;
+
+  /* Borders. `subtle` is the workhorse 1px divider from the spec (#E0E0E0);
+     `warm` is the tinted outline the cards use on the marketing surfaces. */
+  --border-subtle: #e0e0e0;
+  --border-warm: #f2ddd6;
+  --border-strong: #c6c6c7;
+
+  /* Accent — reserved for Donate / Confirm / active states. */
+  --accent: #ff5722;
+  --accent-hover: #f04e1c;
+  --accent-active: #d94317;
+  --accent-subtle: #fff1ed;
+  --accent-border: #ffc7b5;
+  --accent-fg: #ffffff;
+
+  /* Brand — the deep burnt red used for the wordmark and inline links. */
+  --brand: #b02f00;
+  --brand-hover: #8f2600;
+
+  /* Status */
+  --success: #1a7f45;
+  --success-subtle: #e6f5ec;
+  --success-fg: #0f5c31;
+
+  --warning: #a16207;
+  --warning-subtle: #fdf5e2;
+  --warning-fg: #7c4a02;
+
+  --danger: #ba1a1a;
+  --danger-hover: #9c1414;
+  --danger-subtle: #ffdad6;
+  --danger-fg: #93000a;
+
+  --info: #1f5f8b;
+  --info-subtle: #e8f1f8;
+  --info-fg: #17456a;
+
+  /* Focus ring. Visible on every interactive element, always. */
+  --ring: #ff5722;
+
+  /* Charts — a restrained ramp anchored on the accent. */
+  --chart-1: #ff5722;
+  --chart-2: #b02f00;
+  --chart-3: #f0a58c;
+  --chart-4: #5d5f5f;
+  --chart-5: #c6c6c7;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --canvas: #141616;
+  --canvas-inset: #101212;
+  --surface: #1c1f1f;
+  --surface-raised: #232626;
+  --surface-sunken: #171a1a;
+  --surface-hover: #262a2a;
+  --surface-active: #2f3333;
+  --surface-inverted: #f0f1f1;
+
+  --fg: #eceded;
+  --fg-muted: #a4a7a7;
+  --fg-subtle: #747979;
+  --fg-inverted: #1a1c1c;
+  --fg-on-accent: #ffffff;
+
+  --border-subtle: #2e3232;
+  --border-warm: #3a2c28;
+  --border-strong: #454a4a;
+
+  --accent: #ff6b3d;
+  --accent-hover: #ff8055;
+  --accent-active: #f04e1c;
+  --accent-subtle: #2a1a14;
+  --accent-border: #573024;
+  --accent-fg: #1a0d08;
+
+  --brand: #ffb5a0;
+  --brand-hover: #ffd0c1;
+
+  --success: #4ade80;
+  --success-subtle: #14261c;
+  --success-fg: #86efac;
+
+  --warning: #fbbf24;
+  --warning-subtle: #2a2211;
+  --warning-fg: #fcd34d;
+
+  --danger: #ff6b6b;
+  --danger-hover: #ff8787;
+  --danger-subtle: #2e1616;
+  --danger-fg: #ffb3b3;
+
+  --info: #7cc2f0;
+  --info-subtle: #12232e;
+  --info-fg: #a8d8f7;
+
+  --ring: #ff6b3d;
+
+  --chart-1: #ff6b3d;
+  --chart-2: #ffb5a0;
+  --chart-3: #b8624a;
+  --chart-4: #a4a7a7;
+  --chart-5: #565b5b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Colors */
+  --color-canvas: var(--canvas);
+  --color-canvas-inset: var(--canvas-inset);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-surface-inverted: var(--surface-inverted);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* `text-fg` / `text-muted` / `text-faint` is the whole type-colour scale. */
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-faint: var(--fg-subtle);
+  --color-inverted: var(--fg-inverted);
+
+  /* `border-subtle` is the default 1px divider; `border-warm` is the tinted
+     card outline; `border-strong` is for inputs that need more presence. */
+  --color-subtle: var(--border-subtle);
+  --color-warm: var(--border-warm);
+  --color-strong: var(--border-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-accent-fg: var(--accent-fg);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-fg: var(--success-fg);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-fg: var(--warning-fg);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-fg: var(--danger-fg);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-fg: var(--info-fg);
+
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Type — Inter everywhere, injected by next/font in the root layout. */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  /* Shape — soft and disciplined. 4px is the default component radius. */
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+
+  /* Layout */
+  --spacing-sidebar: 17.5rem; /* 280px expanded */
+  --spacing-sidebar-collapsed: 5rem; /* 80px icon-only */
+  --spacing-topbar: 4rem;
+  --container-content: 75rem; /* 1200px fixed grid */
+  --container-form: 50rem; /* 800px single-column forms */
+
+  /* Elevation — an ambient lift, not a drop shadow. */
+  --shadow-lift: 0 1px 4px 0 rgb(0 0 0 / 0.04);
+  --shadow-overlay:
+    0 8px 32px -8px rgb(0 0 0 / 0.16), 0 2px 8px -2px rgb(0 0 0 / 0.08);
+
+  /* Accordion height transitions, driven by the Radix content-height var. */
+  --animate-accordion-down: accordion-down 200ms ease-out;
+  --animate-accordion-up: accordion-up 200ms ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: var(--border-subtle);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Keyboard focus is visible everywhere. Pointer focus is not. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: var(--accent-fg);
+  }
+
+  /* Tabular figures for every money value and metric. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+@layer utilities {
+  /* The 1px divider + 32px rhythm from the spec, as one utility. */
+  .section-rule {
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

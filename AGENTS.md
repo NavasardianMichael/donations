@@ -7,3 +7,89 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# GiveDirect
+
+Multi-tenant donation platform. Creators publish donation pages at `/d/[slug]`,
+embed them via iframe, and track donations and traffic. The platform takes a
+5% fee per transaction — a displayed figure only; see "No payments" below.
+
+## Version notes that differ from common defaults
+
+- **Next.js 16** — `middleware.ts` is deprecated, use **`proxy.ts`** with an
+  exported `proxy()` function. Turbopack is the default for `dev` and `build`.
+  `params`/`searchParams`/`cookies()`/`headers()` are async-only.
+  `revalidateTag` requires a `cacheLife` profile as its second argument.
+- **Prisma 7** — connection URLs live in `prisma.config.ts`, not
+  `schema.prisma`. The client is constructed with a driver adapter
+  (`@prisma/adapter-pg`). Generated client is TypeScript source in
+  `src/generated/prisma`, imported as `@/generated/prisma/client`.
+- **Tailwind v4** — CSS-first config in `src/app/globals.css` via `@theme
+inline`. There is no `tailwind.config.js`. Dark mode is a `@custom-variant`
+  bound to `.dark` because next-themes toggles a class.
+- **React 19** — components take `ref` as a normal prop. No `forwardRef`.
+
+## No payments
+
+There is **no payment provider integrated, and none should be added** without
+an explicit request. Concretely:
+
+- The Donate button on a public page is **disabled**, with a notice that
+  donations are not enabled yet. The amount selector still renders and
+  validates, because it is part of the design.
+- **The app never writes a `Donation` row.** That table is populated by the
+  seed script and read by the dashboard, donation history and analytics.
+- `src/lib/fees.ts` computes the 5% platform fee for _display_ only. Nothing
+  moves money. A processor's own fee is a second, separate concept and belongs
+  in that file when the time comes.
+- Do not install a payment SDK, add provider env vars, create webhook routes,
+  or build onboarding/payout screens.
+
+## Non-negotiables
+
+1. **Money is integer cents.** Never floats. All fee math lives in
+   `src/lib/fees.ts` and is unit-tested. Format only at the render boundary
+   with `formatCurrency()`.
+2. **Server Actions are public HTTP endpoints.** Every one needs a session
+   check _and_ an ownership check. Being inside a protected layout grants no
+   protection.
+3. **Input from the client is untrusted.** Zod-validate every Server Action
+   argument, and re-derive anything security-relevant server-side.
+4. **`revalidatePath('/d/' + slug)` after every page mutation**, or the cached
+   public page contradicts the database.
+5. **Frame headers are scoped per-path.** A global `X-Frame-Options: DENY`
+   silently breaks every embed. `/embed/*` sets `frame-ancestors *`.
+6. **`src/components/ui` imports nothing from app code except `@/lib/utils`.**
+   Enforced by ESLint. That rule is what makes it a library.
+7. **No raw palette values in app code.** `bg-accent`, not `bg-orange-500`.
+8. **Tailwind classes are never built by concatenation** — the scanner reads
+   source text. Map to full class strings.
+
+## Layout
+
+```
+src/
+  app/            (marketing) (auth) (dashboard) (public) embed api
+  components/ui/  the shared library — barrel export in index.ts
+  components/     dashboard/ donation/ marketing/
+  lib/            auth prisma fees env utils validations/
+  server/         actions/ (mutations)  queries/ (reads, RSC-only)
+prisma/           schema.prisma  seed.ts  migrations/
+```
+
+## Design source
+
+Screens come from the Google Stitch export "Kinetic Clarity" at
+`C:\Users\navas\Downloads\stitch_orange_donation_platform`. Directories whose
+`code.html` is byte-identical to `dashboard_overview_1/code.html` are **drafts**
+— reference only. The unique files (and any directory containing a
+`screen.png`) are the real designs and are implemented as-is, including their
+tablet and mobile variants.
+
+## Commands
+
+```
+pnpm dev            docker compose up -d   # Postgres + PgBouncer
+pnpm build          pnpm typecheck         pnpm test
+pnpm db:migrate     pnpm db:seed           pnpm db:studio
+```

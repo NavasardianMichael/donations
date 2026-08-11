@@ -1,0 +1,48 @@
+# Local Postgres for development.
+#
+#   docker compose up -d
+#   pnpm db:migrate
+#   pnpm db:seed
+#
+# `pgbouncer` mirrors production's pooled connection so the app is exercised
+# against the same topology it will be deployed on. Point DATABASE_URL at
+# 6432 (pooled) and DIRECT_URL at 5432 (direct, for migrations).
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: givedirect
+    ports:
+      - "5432:5432"
+    volumes:
+      - givedirect-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d givedirect"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: givedirect
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      AUTH_TYPE: scram-sha-256
+    ports:
+      - "6432:5432"
+
+volumes:
+  givedirect-pgdata:
