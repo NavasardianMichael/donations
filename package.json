@@ -20,7 +20,8 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:db": "vitest run --mode db"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

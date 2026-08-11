@@ -6,7 +6,7 @@
 #
 # `pgbouncer` mirrors production's pooled connection so the app is exercised
 # against the same topology it will be deployed on. Point DATABASE_URL at
-# 6432 (pooled) and DIRECT_URL at 5432 (direct, for migrations).
+# 6442 (pooled) and DIRECT_URL at 5442 (direct, for migrations).
 services:
   db:
     image: postgres:17-alpine
@@ -16,7 +16,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: givedirect
     ports:
-      - "5432:5432"
+      - "5442:5432"
     volumes:
       - givedirect-pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -42,7 +42,7 @@ services:
       DEFAULT_POOL_SIZE: 20
       AUTH_TYPE: scram-sha-256
     ports:
-      - "6432:5432"
+      - "6442:5432"
 
 volumes:
   givedirect-pgdata:

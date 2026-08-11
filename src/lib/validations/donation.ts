@@ -45,8 +45,8 @@ export const contactSchema = z.object({
     .trim()
     .min(20, "Tell us a little more — at least 20 characters.")
     .max(4000),
-  // Honeypot.
-  website: z.string().max(0).optional().or(z.literal("")),
+  /** Honeypot — permissive here, silently discarded by the action. */
+  website: z.string().max(200).optional(),
 });
 
 export type DonationAmountInput = z.infer<typeof donationAmountSchema>;

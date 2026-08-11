@@ -32,8 +32,14 @@ export const signUpSchema = z.object({
     .max(80, "That name is too long."),
   email: emailSchema,
   password: passwordSchema,
-  // Honeypot. Real users never fill this; bots usually do.
-  website: z.string().max(0).optional().or(z.literal("")),
+  /**
+   * Honeypot. Real users never fill this; bots usually do.
+   *
+   * Deliberately permissive: if the schema rejected a filled honeypot, the
+   * caller would get a validation error telling them which field tripped.
+   * The action accepts the submission and silently discards it instead.
+   */
+  website: z.string().max(200).optional(),
 });
 
 export const signInSchema = z.object({
