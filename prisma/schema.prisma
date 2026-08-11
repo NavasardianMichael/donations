@@ -1,5 +1,6 @@
 // GiveDirect — donation platform schema
-// Money is stored in integer minor units (cents). Never floats.
+// Money is stored in integer MINOR units (luma for AMD, cents for USD).
+// Never floats. Display conversion lives in src/lib/currency.ts.
 
 generator client {
   provider = "prisma-client"
@@ -113,11 +114,11 @@ model DonationPage {
   coverImageUrl String?
   status        PageStatus @default(DRAFT)
 
-  currency          String  @default("usd")
-  suggestedAmounts  Int[]   @default([1000, 2500, 5000])
+  currency          String  @default("amd")
+  suggestedAmounts  Int[]   @default([100000, 500000, 1000000])
   allowCustomAmount Boolean @default(true)
-  minAmountCents    Int     @default(100)
-  goalAmountCents   Int?
+  minAmountMinor    Int     @default(10000)
+  goalAmountMinor   Int?
   showProgressBar   Boolean @default(true)
   collectDonorName  Boolean @default(true)
   collectMessage    Boolean @default(false)
@@ -151,7 +152,11 @@ model DonationPage {
 // ---------------------------------------------------------------------------
 
 enum DonationStatus {
+  /// Row created, not yet registered with the gateway.
   PENDING
+  /// `register.do` succeeded; the donor has a `formUrl` and may be on the
+  /// gateway's page right now, or may have abandoned it.
+  AUTHORIZING
   SUCCEEDED
   FAILED
   REFUNDED
@@ -163,24 +168,47 @@ enum TrafficSource {
   REFERRAL
 }
 
-/// Donation records. No payment provider is wired up yet, so nothing in the
-/// app writes to this table — it is populated by the seed script and read by
-/// the dashboard, donation history and analytics. When a processor is added,
-/// its identifiers go on this model and the writes start here.
+enum PaymentProvider {
+  ARCA
+}
+
+/// Donation records.
+///
+/// A row is created BEFORE the donor is sent to the payment gateway, in
+/// PENDING, and its id is the `orderNumber` we register with ArCa. It only
+/// becomes SUCCEEDED after a server-to-server status query confirms it —
+/// never on the strength of the browser returning to our return URL.
 model Donation {
   id                String         @id @default(cuid())
   pageId            String
-  amountCents       Int
+  amountMinor       Int
   currency          String
-  platformFeeCents  Int
-  netToCreatorCents Int?
+  platformFeeMinor  Int
+  netToCreatorMinor Int?
   status            DonationStatus @default(PENDING)
 
-  donorName   String?
-  donorEmail  String?
-  message     String?       @db.Text
-  isAnonymous Boolean       @default(false)
-  source      TrafficSource @default(DIRECT)
+  // --- Payment provider -----------------------------------------------
+  /// Which gateway handled this. Lets a second provider be added without a
+  /// backfill, and keeps historical rows honest about how they were paid.
+  provider          PaymentProvider @default(ARCA)
+  /// The gateway's own order id (ArCa: `orderId` from register.do).
+  providerOrderId   String?         @unique
+  /// Masked PAN and approval code, for receipts and support lookups.
+  cardMask          String?
+  approvalCode      String?
+  /// Gateway decline/error detail, kept for support rather than shown raw.
+  failureCode       String?
+  failureMessage    String?
+  /// Set once the donor has been sent to the gateway, so a stale PENDING row
+  /// can be reconciled or expired.
+  registeredAt      DateTime?
+
+  donorName     String?
+  donorEmail    String?
+  message       String?       @db.Text
+  isAnonymous   Boolean       @default(false)
+  source        TrafficSource @default(DIRECT)
+  receiptSentAt DateTime?
 
   createdAt   DateTime  @default(now())
   completedAt DateTime?
@@ -189,6 +217,8 @@ model Donation {
   page DonationPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
   @@index([pageId, status, createdAt])
+  /// Drives the reconcile sweep for rows abandoned at the gateway.
+  @@index([status, registeredAt])
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +247,7 @@ model PageDailyStat {
   views          Int      @default(0)
   uniqueVisitors Int      @default(0)
   donationCount  Int      @default(0)
-  amountCents    Int      @default(0)
+  amountMinor    Int      @default(0)
 
   page DonationPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
 

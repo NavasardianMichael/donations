@@ -85,11 +85,11 @@ CREATE TABLE "DonationPage" (
     "description" TEXT,
     "coverImageUrl" TEXT,
     "status" "PageStatus" NOT NULL DEFAULT 'DRAFT',
-    "currency" TEXT NOT NULL DEFAULT 'usd',
-    "suggestedAmounts" INTEGER[] DEFAULT ARRAY[1000, 2500, 5000]::INTEGER[],
+    "currency" TEXT NOT NULL DEFAULT 'amd',
+    "suggestedAmounts" INTEGER[] DEFAULT ARRAY[100000, 500000, 1000000]::INTEGER[],
     "allowCustomAmount" BOOLEAN NOT NULL DEFAULT true,
-    "minAmountCents" INTEGER NOT NULL DEFAULT 100,
-    "goalAmountCents" INTEGER,
+    "minAmountMinor" INTEGER NOT NULL DEFAULT 10000,
+    "goalAmountMinor" INTEGER,
     "showProgressBar" BOOLEAN NOT NULL DEFAULT true,
     "collectDonorName" BOOLEAN NOT NULL DEFAULT true,
     "collectMessage" BOOLEAN NOT NULL DEFAULT false,
@@ -113,10 +113,10 @@ CREATE TABLE "DonationPage" (
 CREATE TABLE "Donation" (
     "id" TEXT NOT NULL,
     "pageId" TEXT NOT NULL,
-    "amountCents" INTEGER NOT NULL,
+    "amountMinor" INTEGER NOT NULL,
     "currency" TEXT NOT NULL,
-    "platformFeeCents" INTEGER NOT NULL,
-    "netToCreatorCents" INTEGER,
+    "platformFeeMinor" INTEGER NOT NULL,
+    "netToCreatorMinor" INTEGER,
     "status" "DonationStatus" NOT NULL DEFAULT 'PENDING',
     "donorName" TEXT,
     "donorEmail" TEXT,
@@ -151,7 +151,7 @@ CREATE TABLE "PageDailyStat" (
     "views" INTEGER NOT NULL DEFAULT 0,
     "uniqueVisitors" INTEGER NOT NULL DEFAULT 0,
     "donationCount" INTEGER NOT NULL DEFAULT 0,
-    "amountCents" INTEGER NOT NULL DEFAULT 0,
+    "amountMinor" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "PageDailyStat_pkey" PRIMARY KEY ("id")
 );
