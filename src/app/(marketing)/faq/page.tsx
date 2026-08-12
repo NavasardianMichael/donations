@@ -1,5 +1,7 @@
 import { MessageCircleQuestion } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
+
 import type { Metadata } from "next";
 
 import {
@@ -59,9 +61,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function FaqPage() {
   const t = await getTranslations("faq");
   const values = feeValues();
-  const contactAddress =
-    process.env.CONTACT_EMAIL_TO || `support@${BRAND.domain}`;
-
   /**
    * FAQPage structured data.
    *
@@ -152,10 +151,8 @@ export default async function FaqPage() {
             <Text size="sm" variant="muted">
               {t("stillHaveQuestionsBody")}
             </Text>
-            {/* mailto until /contact is built — better a link that works
-                than one that 404s. */}
             <Button asChild variant="outline" className="mt-1">
-              <a href={`mailto:${contactAddress}`}>{t("contactUs")}</a>
+              <Link href="/contact">{t("contactUs")}</Link>
             </Button>
           </CardContent>
         </Card>

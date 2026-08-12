@@ -3,6 +3,7 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 import type { Metadata, Viewport } from "next";
 
+import { AppGoogleAnalytics } from "@/components/marketing/google-analytics";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppUiLabels } from "@/components/ui-labels-provider";
 import { Toaster } from "@/components/ui";
@@ -16,6 +17,7 @@ import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("footer");
+  const tLanding = await getTranslations("landing");
   const locale = (await getLocale()) as AppLocale;
 
   return {
@@ -24,8 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
       default: `${BRAND.name} — ${t("tagline")}`,
       template: `%s · ${BRAND.name}`,
     },
-    description:
-      "Ստեղծեք նվիրատվության էջ, հրապարակեք այն ձեր հասցեով և ներդրեք ցանկացած կայքում։",
+    description: tLanding("metaDescription", { brand: BRAND.name }),
     applicationName: BRAND.name,
     openGraph: {
       type: "website",
@@ -61,6 +62,9 @@ export default async function RootLayout({
             <ThemeProvider>
               {children}
               <Toaster />
+              {clientEnv.gaId ? (
+                <AppGoogleAnalytics gaId={clientEnv.gaId} />
+              ) : null}
             </ThemeProvider>
           </AppUiLabels>
         </NextIntlClientProvider>

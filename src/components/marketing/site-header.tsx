@@ -11,12 +11,12 @@ import { HeaderAuthActions } from "@/components/marketing/header-auth-actions";
  * Nothing here reads cookies — see `HeaderAuthActions` for why that matters.
  * This component stays statically renderable, which is what lets the marketing
  * pages (and, later, the donation pages) be prerendered.
- *
- * The nav lists only routes that exist. Contact and Terms join it when those
- * pages are built — a header linking to its own 404s is worse than a short
- * header.
  */
-const NAV = [{ href: "/faq", labelKey: "navFaq" }] as const;
+const NAV = [
+  { href: "/faq", labelKey: "navFaq" },
+  { href: "/contact", labelKey: "navContact" },
+  { href: "/donation-terms", labelKey: "navTerms" },
+] as const;
 
 export async function SiteHeader() {
   const t = await getTranslations("marketing");

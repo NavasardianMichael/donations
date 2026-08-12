@@ -18,14 +18,24 @@ export async function SiteFooter() {
 
         <nav aria-label={t("faq")}>
           <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
-            <li>
-              <Link
-                href="/faq"
-                className="text-muted hover:text-brand hover:underline"
-              >
-                {t("faq")}
-              </Link>
-            </li>
+            {(
+              [
+                ["faq", "/faq"],
+                ["contact", "/contact"],
+                ["donationTerms", "/donation-terms"],
+                ["privacy", "/privacy"],
+                ["terms", "/terms"],
+              ] as const
+            ).map(([key, href]) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className="text-muted hover:text-brand hover:underline"
+                >
+                  {t(key)}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     data: {
       pageId: page.id,
       visitorHash: visitorHash(ip, userAgent),
-      referrer: referrerDomain(referrer, absoluteUrl("")),
+      referrer: referrerDomain(referrer, new URL(absoluteUrl("/")).origin),
       country: countryFromHeaders(request.headers),
       source,
     },

@@ -6,8 +6,9 @@ import { requireUser } from "@/lib/auth-guards";
 import { getOwnedPage } from "@/server/queries/pages";
 
 /**
- * Per-page nav: Editor / Settings / Embed / Donations, all scoped under one
- * ownership check so a mistyped id 404s once here instead of in each tab.
+ * Per-page nav: Editor / Settings / Embed / Donations / Analytics, all
+ * scoped under one ownership check so a mistyped id 404s once here instead
+ * of in each tab.
  */
 export default async function PageLayout({
   children,

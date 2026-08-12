@@ -8,11 +8,11 @@ import { Heading } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 /**
- * Editor / Settings / Embed / Donations.
+ * Editor / Settings / Embed / Donations / Analytics.
  *
  * Plain links styled as tabs, not the Radix `Tabs` primitive — that
  * component owns its own selection state for a single-page tab PANEL, but
- * these are four distinct ROUTES. Radix's `Tabs.Trigger` also does not
+ * these are distinct ROUTES. Radix's `Tabs.Trigger` also does not
  * support `asChild`, so it cannot render a `<Link>` in the first place.
  */
 export function PageTabNav({
@@ -31,6 +31,7 @@ export function PageTabNav({
     { href: `${base}/settings`, key: "settings" as const },
     { href: `${base}/embed`, key: "embed" as const },
     { href: `${base}/donations`, key: "donations" as const },
+    { href: `${base}/analytics`, key: "analytics" as const },
   ];
 
   return (

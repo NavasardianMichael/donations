@@ -4,10 +4,11 @@ A multi-tenant donation platform for the Armenian market. Creators sign up,
 build donation pages, publish them at `/d/<slug>`, and embed them on their own
 sites via iframe.
 
-> **No payment provider is integrated.** The Donate button renders per the
-> design but is disabled, and the app never creates a `Donation` record. The 5%
-> platform fee in `src/lib/fees.ts` is a displayed figure only. See the
-> "No payments" section of [AGENTS.md](./AGENTS.md).
+> **ArCa hosted checkout is integrated** (`ipay.arca.am`), but without
+> `ARCA_USERNAME` / `ARCA_PASSWORD` the Donate button stays disabled and no
+> live charges run. The 5% platform fee in `src/lib/fees.ts` is computed for
+> display (and stored on succeeded rows). See [AGENTS.md](./AGENTS.md) and
+> `src/lib/payments/arca.ts`.
 
 Three things worth knowing before reading the code:
 
@@ -67,19 +68,20 @@ points at Postgres (5442) and is used only by `prisma migrate`.
 
 ### What you can visit today
 
-| Route               | State                                                 |
-| ------------------- | ----------------------------------------------------- |
-| `/login`            | Built. Credentials + Google.                          |
-| `/signup`           | Built. Password strength meter, honeypot.             |
-| `/forgot-password`  | Built.                                                |
-| `/reset-password`   | Built. Validates the token before rendering the form. |
-| `/verify-email`     | Built.                                                |
-| `/dashboard`        | Placeholder — auth-gated, real UI is next.            |
-| `/dev/kitchen-sink` | Every UI component, in every variant. Dev only.       |
-| `/`                 | **Blank.** The landing page is not built yet.         |
+| Route | State |
+| --- | --- |
+| `/` | Landing page. |
+| `/faq`, `/contact`, `/donation-terms`, `/privacy`, `/terms` | Marketing + legal. |
+| `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email` | Auth. |
+| `/dashboard` | Overview — stats, recent supporters, payouts placeholder. |
+| `/pages`, `/pages/new`, `/pages/[pageId]/*` | Manage pages (editor, settings, embed, donations, analytics). |
+| `/analytics`, `/widget`, `/settings/payouts` | Dashboard tools. |
+| `/d/[slug]`, `/d/[slug]/thank-you` | Public donation page + thank-you. |
+| `/embed/[slug]` | Embeddable widget (no chrome, frame-ancestors open). |
+| `/dev/kitchen-sink` | Every UI component. Dev only. |
 
-Start at **`/login`** or **`/dev/kitchen-sink`**. The root URL renders nothing
-on purpose — it is a later phase.
+Start at **`/`**, **`/login`**, or **`/dev/kitchen-sink`**. Seed the DB if you
+want the dashboard and analytics screens to show sample data.
 
 ### Signing in
 
@@ -183,27 +185,20 @@ pnpm db:reset         # DESTRUCTIVE — drops, re-migrates, re-seeds
 src/
   app/
     (auth)/          login, signup, forgot/reset password, verify email
-    (dashboard)/     auth-gated app shell
-    api/auth/        Auth.js route handler
-    dev/             kitchen sink, dev-gated
+    (dashboard)/     overview, pages, analytics, widget, payouts
+    (marketing)/     landing, faq, contact, legal pages
+    (public)/        /d/[slug] donation pages
+    embed/           iframe widget
+    api/             auth, track, ArCa return, crons
+    sitemap.ts / robots.ts
   components/
     ui/              the shared library — see below
-    auth/  brand/
-  fonts/             GHEA Grapalat WOFF2 faces
-  i18n/              locale config, request config, named formats
-  lib/
-    auth.ts          Auth.js config, including the account-linking guard
-    auth-guards.ts   requireUser() and friends
-    brand.ts         THE brand constant
-    currency.ts      AMD/USD metadata, formatting, parsing
-    fees.ts          platform fee math, unit-tested
-    fonts.ts         next/font/local declaration and weight ranges
-    prisma.ts        client singleton over the pg driver adapter
-    tokens.ts        single-use email + reset tokens (hashed at rest)
-    rate-limit.ts    Upstash, or in-memory in development
-    email/           Resend wrapper + templates
-    validations/     Zod schema factories, shared client and server
-  server/actions/    Server Actions, one file per domain
+    auth/ brand/ dashboard/ donation/ marketing/
+  i18n/              locale config, request config
+  lib/               auth, brand, currency, fees, payments/arca, email, …
+  server/
+    actions/         mutations (auth, pages, checkout, contact, …)
+    queries/         RSC reads (pages, analytics, overview, …)
   proxy.ts           route protection (Next 16's renamed middleware)
 messages/hy.json     every user-facing string
 prisma/              schema.prisma, seed.ts, migrations/
