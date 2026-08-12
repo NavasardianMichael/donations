@@ -26,7 +26,7 @@ export default async function WidgetPage() {
   const pages = await listPages(user.id, { status: "PUBLISHED" });
 
   return (
-    <div className="mx-auto max-w-content space-y-6 px-4 py-8 sm:px-6 lg:px-10">
+    <div className="space-y-6 px-4 py-8 sm:px-6 lg:px-10">
       <header>
         <Heading level={1} size="display">
           {t("title")}

@@ -47,7 +47,7 @@ export default async function LandingPage() {
           className="pointer-events-none absolute -right-24 -bottom-32 size-[28rem] rounded-full bg-accent/10 blur-3xl motion-safe:animate-[pulse_8s_ease-in-out_infinite]"
         />
 
-        <div className="relative mx-auto flex max-w-content flex-col items-start px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="relative flex flex-col items-start px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
           <Wordmark size="lg" className="motion-safe:animate-[fade-up_0.6s_ease-out_both]" />
           <Heading
             level={1}
@@ -73,7 +73,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-content px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+      <section className="px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
         <Heading level={2} size="lg">
           {t("featuresTitle")}
         </Heading>
@@ -97,7 +97,7 @@ export default async function LandingPage() {
       </section>
 
       <section className="border-y border-subtle bg-surface-sunken/60">
-        <div className="mx-auto max-w-content px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+        <div className="px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
           <Heading level={2} size="lg">
             {t("howTitle")}
           </Heading>
@@ -121,7 +121,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-content px-4 py-16 sm:px-6 lg:px-10 lg:py-24">
+      <section className="px-4 py-16 sm:px-6 lg:px-10 lg:py-24">
         <div className="rounded-sm bg-accent px-6 py-12 text-accent-fg sm:px-10 sm:py-14">
           <Heading level={2} size="lg" className="text-accent-fg">
             {t("ctaTitle")}

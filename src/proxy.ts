@@ -58,11 +58,17 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   /**
-   * Skip static assets, image optimisation, the auth API itself, and the
-   * embed surface — an embed must render for anonymous visitors inside a
-   * third-party iframe with no redirect logic in the way.
+   * Skip static assets, image optimisation, the auth API itself, the payment
+   * callbacks, and the embed surface.
+   *
+   * `api/payments` covers the ArCa return leg and the Paddle webhook. Neither
+   * carries a session cookie — one is a gateway redirect, the other a
+   * server-to-server POST from Paddle — so decoding a token for them is pure
+   * waste, and a proxy that ever grew a redirect would break a payment
+   * confirmation silently. An embed must likewise render for anonymous visitors
+   * inside a third-party iframe with no redirect logic in the way.
    */
   matcher: [
-    "/((?!api/auth|api/track|embed|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff2?)$).*)",
+    "/((?!api/auth|api/track|api/payments|embed|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff2?)$).*)",
   ],
 };

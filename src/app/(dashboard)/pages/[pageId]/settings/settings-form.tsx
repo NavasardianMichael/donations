@@ -230,8 +230,9 @@ export function PageSettingsForm({
         </Card>
       </section>
 
-      {/* Sticky so the primary action stays reachable on a long form. */}
-      <div className="sticky bottom-20 z-10 flex flex-col-reverse gap-2 rounded-sm border border-subtle bg-surface/95 p-3 backdrop-blur sm:flex-row sm:justify-end md:bottom-4">
+      {/* Sticky so the primary action stays reachable on a long form. Sticks to
+          the bottom of the workspace scroll region, not the viewport. */}
+      <div className="sticky bottom-4 z-10 flex flex-col-reverse gap-2 rounded-sm border border-subtle bg-surface/95 p-3 backdrop-blur sm:flex-row sm:justify-end">
         <Button
           type="button"
           variant="outline"

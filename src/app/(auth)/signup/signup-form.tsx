@@ -82,7 +82,13 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
     formState: { errors },
   } = useForm<SignUpInput>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", email: "", password: "", website: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      website: "",
+    },
   });
 
   // `useWatch` rather than `watch()` — the latter returns a fresh function
@@ -199,6 +205,19 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
           </Field>
           <StrengthMeter password={password} />
         </div>
+
+        <Field
+          label={t("fields.confirmPassword")}
+          error={errors.confirmPassword?.message}
+          required
+        >
+          <Input
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••••"
+            {...register("confirmPassword")}
+          />
+        </Field>
 
         <Button type="submit" size="lg" fullWidth loading={pending}>
           {t("signup.submit")}

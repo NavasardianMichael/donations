@@ -52,8 +52,8 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends
-    React.ComponentPropsWithRef<"button">,
-    VariantProps<typeof buttonVariants> {
+  React.ComponentPropsWithRef<"button">,
+  VariantProps<typeof buttonVariants> {
   /**
    * Render the child element with button styling instead of a <button>.
    * This is how <Link> and <a> get the exact same variants.

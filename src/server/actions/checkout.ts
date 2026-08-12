@@ -2,36 +2,52 @@
 
 import { getTranslations } from "next-intl/server";
 
+import type { DonationPage, PaymentProvider } from "@/generated/prisma/client";
 import { BRAND } from "@/lib/brand";
 import { formatMoney } from "@/lib/currency";
 import { absoluteUrl } from "@/lib/env";
-import { feeBreakdown } from "@/lib/fees";
+import { amountBounds, feeBreakdown } from "@/lib/fees";
 import {
   isArcaConfigured,
   registerOrder,
   toArcaCurrencyCode,
   ArcaError,
 } from "@/lib/payments/arca";
+import {
+  createTransaction,
+  isPaddleConfigured,
+  PADDLE_CURRENCY,
+  PaddleError,
+} from "@/lib/payments/paddle";
 import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit, retryAfterSeconds } from "@/lib/rate-limit";
-import { checkoutSchema } from "@/lib/validations/donation";
+import { checkoutSchema, type PaymentMethod } from "@/lib/validations/donation";
 import { resolver } from "@/lib/validations/resolver";
 
 import { fail, ok, rateLimited, zodFieldErrors, type ActionResult } from "./types";
 
 /**
- * Start a checkout: create a PENDING Donation, register it with ArCa, and
- * hand back the URL to redirect the donor's browser to.
+ * Start a checkout: create a PENDING Donation, register it with the chosen
+ * gateway, and hand back the URL to send the donor's browser to.
  *
- * This is the ONLY place a Donation row is created from the public side, and
- * it never marks one SUCCEEDED — that happens exclusively in the return route
- * and the reconcile sweep, both of which confirm with ArCa server-to-server.
- * A donor completing checkout proves nothing by itself; the gateway's answer
- * is the only fact this system trusts.
+ * This is the ONLY place a Donation row is created from the public side, and it
+ * never marks one SUCCEEDED — that happens exclusively in the ArCa return
+ * route, the Paddle webhook, and the reconcile sweep, all of which confirm
+ * server-to-server. A donor completing checkout proves nothing by itself; the
+ * gateway's own answer is the only fact this system trusts.
+ *
+ * Two providers, one entry point:
+ *
+ * - **ARCA** charges the page's own currency and returns ArCa's hosted `formUrl`.
+ * - **PADDLE** charges USD from the page's international ladder, and returns a
+ *   URL on OUR domain that opens Paddle's overlay.
+ *
+ * Both come back as `{ redirectUrl }`, so the form navigates the same way for
+ * either — the difference stays server-side.
  */
 export async function createCheckoutAction(
   input: unknown,
-): Promise<ActionResult<{ redirectUrl: string }>> {
+): Promise<ActionResult<{ redirectUrl: string; newTab: boolean }>> {
   const tv = await getTranslations("validation");
   const td = await getTranslations("donation");
 
@@ -52,8 +68,23 @@ export async function createCheckoutAction(
 
   if (!page) return fail(td("errors.pageNotAvailable"));
 
-  if (!isArcaConfigured()) {
+  // Which method was asked for decides which currency, ladder and bounds
+  // apply, so it has to be read before the schema is built. Never trusted —
+  // `paymentMethodSchema` re-validates it below, and an unrecognised value
+  // falls back to ARCA rather than skipping the provider check.
+  const rawMethod =
+    typeof input === "object" && input !== null && "method" in input
+      ? String((input as { method?: unknown }).method ?? "")
+      : "";
+  const method: PaymentMethod = rawMethod === "PADDLE" ? "PADDLE" : "ARCA";
+
+  // Nothing configured at all: the form should not have submitted, so this is
+  // either a stale page or a direct POST.
+  if (method === "ARCA" && !isArcaConfigured()) {
     return fail(td("errors.providerUnavailable"));
+  }
+  if (method === "PADDLE" && !isPaddleConfigured()) {
+    return fail(td("errors.methodUnavailable"));
   }
 
   const ip = await clientIp();
@@ -63,9 +94,17 @@ export async function createCheckoutAction(
     return rateLimited(tv("rateLimited", { seconds: retryAfter }), retryAfter);
   }
 
+  // The charged currency is NOT the page's display currency for Paddle.
+  const chargeCurrency = method === "PADDLE" ? PADDLE_CURRENCY : page.currency;
+  const chargeMinimum =
+    method === "PADDLE" ? page.minAmountMinorUsd : page.minAmountMinor;
+  const chargeLadder =
+    method === "PADDLE" ? page.suggestedAmountsUsd : page.suggestedAmounts;
+
   const schema = checkoutSchema(
     resolver(tv),
-    formatMoney(page.minAmountMinor, page.currency),
+    formatMoney(chargeMinimum, chargeCurrency),
+    amountBounds(chargeCurrency),
   );
   const parsed = schema.safeParse(input);
   if (!parsed.success) {
@@ -77,18 +116,24 @@ export async function createCheckoutAction(
 
   // Honeypot: behave as if the request succeeded but do nothing real.
   if (website) {
-    return ok({ redirectUrl: absoluteUrl(`/d/${page.slug}`) });
+    return ok({
+      redirectUrl: absoluteUrl(`/d/${page.slug}`),
+      newTab: false,
+    });
   }
 
   // The client-side selector already enforces this; re-checking here is what
   // makes it a real rule instead of a suggestion; POSTing straight to this
-  // action with an arbitrary amount is one curl call away.
-  if (amountMinor < page.minAmountMinor) {
+  // action with an arbitrary amount is one curl call away. Note both checks run
+  // against the ladder for the CHOSEN method — a USD amount validated against
+  // the AMD ladder would pass nothing, and an AMD amount validated against the
+  // USD one would let a 100 ֏ donation through as $1.
+  if (amountMinor < chargeMinimum) {
     return fail(
-      tv("amount.tooSmall", { min: formatMoney(page.minAmountMinor, page.currency) }),
+      tv("amount.tooSmall", { min: formatMoney(chargeMinimum, chargeCurrency) }),
     );
   }
-  if (!page.allowCustomAmount && !page.suggestedAmounts.includes(amountMinor)) {
+  if (!page.allowCustomAmount && !chargeLadder.includes(amountMinor)) {
     return fail(td("errors.amountMismatch"));
   }
 
@@ -98,10 +143,18 @@ export async function createCheckoutAction(
     data: {
       pageId: page.id,
       amountMinor,
-      currency: page.currency,
+      currency: chargeCurrency,
+      // Every aggregate sums this, so it must be in the PAGE's currency
+      // regardless of what was charged. Frozen now: editing the ladders later
+      // must not rewrite what a past donation was worth.
+      pageAmountMinor: toPageCurrencyMinor(page, method, amountMinor),
       platformFeeMinor: breakdown.platformFeeMinor,
       netToCreatorMinor: breakdown.netToCreatorMinor,
       status: "PENDING",
+      // Written explicitly rather than left to the schema default, which would
+      // label a Paddle donation ARCA and send the reconcile sweep to the wrong
+      // gateway with an id it cannot resolve.
+      provider: method satisfies PaymentProvider,
       donorName: page.collectDonorName && !isAnonymous ? donorName || null : null,
       donorEmail: donorEmail || null,
       message: page.collectMessage ? message || null : null,
@@ -111,47 +164,146 @@ export async function createCheckoutAction(
     select: { id: true },
   });
 
-  const returnUrl = absoluteUrl(
-    `/api/payments/arca/return?donationId=${donation.id}`,
-  );
-
   try {
-    const { orderId, formUrl } = await registerOrder({
-      orderNumber: donation.id,
-      amountMinor,
-      currency: toArcaCurrencyCode(page.currency),
-      returnUrl,
-      failUrl: returnUrl,
-      description: `${BRAND.name}: ${page.title}`,
-      clientId: donation.id,
-      language: "hy",
-    });
+    const redirectUrl =
+      method === "PADDLE"
+        ? await startPaddleCheckout({
+            donationId: donation.id,
+            amountMinor,
+            pageTitle: page.title,
+            donorEmail: donorEmail || null,
+          })
+        : await startArcaCheckout({
+            donationId: donation.id,
+            amountMinor,
+            currency: page.currency,
+            pageTitle: page.title,
+          });
 
-    await prisma.donation.update({
-      where: { id: donation.id },
-      data: {
-        providerOrderId: orderId,
-        status: "AUTHORIZING",
-        registeredAt: new Date(),
-      },
+    return ok({
+      redirectUrl,
+      // A Paddle overlay nested inside a third-party iframe is unreliable, so
+      // an embedded widget hands the checkout to a new top-level tab instead.
+      newTab: method === "PADDLE" && source === "EMBED",
     });
-
-    return ok({ redirectUrl: formUrl });
   } catch (error) {
-    const message = error instanceof ArcaError ? error.message : String(error);
+    const { code, message: detail } = describeProviderError(error);
 
     await prisma.donation.update({
       where: { id: donation.id },
       data: {
         status: "FAILED",
-        failureCode: error instanceof ArcaError ? error.errorCode : "unknown",
-        failureMessage: message.slice(0, 500),
+        failureCode: code,
+        failureMessage: detail.slice(0, 500),
       },
     });
 
     // Logged, not shown raw — a gateway error message is not written for a
     // donor to read, and could leak configuration detail.
-    console.error("ArCa registerOrder failed:", message);
+    console.error(`${method} checkout registration failed:`, detail);
     return fail(td("errors.registrationFailed"));
   }
+}
+
+/**
+ * The donation's worth in the page's own currency.
+ *
+ * For ArCa this is the amount itself. For Paddle it has to be derived, and the
+ * creator's two ladders are the only rate anywhere in the system: an amount
+ * picked off the international ladder maps to the AMD amount at the same index.
+ * A custom amount has no counterpart, so it is scaled by the ratio the ladders
+ * imply — the creator's own declared pricing, not an invented FX rate.
+ */
+function toPageCurrencyMinor(
+  page: DonationPage,
+  method: PaymentMethod,
+  amountMinor: number,
+): number {
+  if (method !== "PADDLE") return amountMinor;
+
+  const index = page.suggestedAmountsUsd.indexOf(amountMinor);
+  const paired = page.suggestedAmounts[index];
+  if (index !== -1 && paired !== undefined) return paired;
+
+  const usdTotal = page.suggestedAmountsUsd.reduce((sum, a) => sum + a, 0);
+  const pageTotal = page.suggestedAmounts.reduce((sum, a) => sum + a, 0);
+  // No usable ladder to scale by — record the charged amount rather than a
+  // divide-by-zero. Rare enough to accept; a page always ships with defaults.
+  if (usdTotal <= 0 || pageTotal <= 0) return amountMinor;
+
+  return Math.round((amountMinor * pageTotal) / usdTotal);
+}
+
+async function startArcaCheckout(input: {
+  donationId: string;
+  amountMinor: number;
+  currency: string;
+  pageTitle: string;
+}): Promise<string> {
+  const returnUrl = absoluteUrl(
+    `/api/payments/arca/return?donationId=${input.donationId}`,
+  );
+
+  const { orderId, formUrl } = await registerOrder({
+    orderNumber: input.donationId,
+    amountMinor: input.amountMinor,
+    currency: toArcaCurrencyCode(input.currency),
+    returnUrl,
+    failUrl: returnUrl,
+    description: `${BRAND.name}: ${input.pageTitle}`,
+    clientId: input.donationId,
+    language: "hy",
+  });
+
+  await prisma.donation.update({
+    where: { id: input.donationId },
+    data: {
+      providerOrderId: orderId,
+      status: "AUTHORIZING",
+      registeredAt: new Date(),
+    },
+  });
+
+  return formUrl;
+}
+
+async function startPaddleCheckout(input: {
+  donationId: string;
+  amountMinor: number;
+  pageTitle: string;
+  donorEmail: string | null;
+}): Promise<string> {
+  const { transactionId, checkoutUrl } = await createTransaction({
+    donationId: input.donationId,
+    amountMinor: input.amountMinor,
+    description: `${BRAND.name}: ${input.pageTitle}`,
+    // Paddle appends `?_ptxn=txn_…` to this. The donation id rides in the path
+    // so appending a query string cannot corrupt it.
+    checkoutUrl: absoluteUrl(`/paddle/checkout/${input.donationId}`),
+    donorEmail: input.donorEmail,
+  });
+
+  await prisma.donation.update({
+    where: { id: input.donationId },
+    data: {
+      providerOrderId: transactionId,
+      status: "AUTHORIZING",
+      registeredAt: new Date(),
+    },
+  });
+
+  return checkoutUrl;
+}
+
+function describeProviderError(error: unknown): {
+  code: string;
+  message: string;
+} {
+  if (error instanceof ArcaError || error instanceof PaddleError) {
+    return { code: error.errorCode, message: error.message };
+  }
+  return {
+    code: "unknown",
+    message: error instanceof Error ? error.message : String(error),
+  };
 }

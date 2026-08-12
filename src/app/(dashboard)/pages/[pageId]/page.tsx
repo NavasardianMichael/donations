@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 
 import { requireUser } from "@/lib/auth-guards";
 import type { CurrencyCode } from "@/lib/currency";
+import { isPaddleConfigured } from "@/lib/payments/paddle";
 import { getOwnedPage } from "@/server/queries/pages";
 
 import { PageEditorForm } from "./page-editor-form";
@@ -25,6 +26,10 @@ export default async function PageEditorPage(props: {
 
   return (
     <PageEditorForm
+      // The international ladder is only editable when Paddle can actually
+      // charge it — otherwise the section is configuration for a checkout the
+      // donor will never be offered.
+      paddleConfigured={isPaddleConfigured()}
       page={{
         id: page.id,
         title: page.title,
@@ -32,8 +37,10 @@ export default async function PageEditorPage(props: {
         coverImageUrl: page.coverImageUrl,
         currency: page.currency as CurrencyCode,
         suggestedAmounts: page.suggestedAmounts,
+        suggestedAmountsUsd: page.suggestedAmountsUsd,
         allowCustomAmount: page.allowCustomAmount,
         minAmountMinor: page.minAmountMinor,
+        minAmountMinorUsd: page.minAmountMinorUsd,
         goalAmountMinor: page.goalAmountMinor,
         showProgressBar: page.showProgressBar,
         collectDonorName: page.collectDonorName,

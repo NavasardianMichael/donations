@@ -51,7 +51,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(thankYouUrl);
   }
 
-  if (!isArcaConfigured() || !donation.providerOrderId) {
+  // Only ArCa's own donations may be resolved from here. `donationId` arrives
+  // in a query string, so a Paddle id could be pasted in — and querying ArCa
+  // with a `txn_…` would fail, or worse, resolve some unrelated ArCa order.
+  // Paddle donations are confirmed by their signed webhook, never by a redirect.
+  if (
+    donation.provider !== "ARCA" ||
+    !isArcaConfigured() ||
+    !donation.providerOrderId
+  ) {
     return NextResponse.redirect(thankYouUrl);
   }
 

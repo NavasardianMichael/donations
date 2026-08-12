@@ -8,6 +8,7 @@ import { EmbedHeightReporter } from "@/components/donation/embed-height-reporter
 import { TrackBeacon } from "@/components/donation/track-beacon";
 import { Avatar, Heading, ProgressBar, Text } from "@/components/ui";
 import { isArcaConfigured } from "@/lib/payments/arca";
+import { isPaddleConfigured } from "@/lib/payments/paddle";
 import { getPublicPageBySlug, listPublishedSlugs } from "@/server/queries/public-pages";
 
 export const revalidate = 3600;
@@ -83,10 +84,15 @@ export default async function EmbedDonationPage(props: {
           currency={page.currency}
           suggestedAmounts={page.suggestedAmounts}
           minAmountMinor={page.minAmountMinor}
+          suggestedAmountsUsd={page.suggestedAmountsUsd}
+          minAmountMinorUsd={page.minAmountMinorUsd}
           allowCustomAmount={page.allowCustomAmount}
           collectDonorName={page.collectDonorName}
           collectMessage={page.collectMessage}
-          arcaConfigured={isArcaConfigured()}
+          providers={{
+            arca: isArcaConfigured(),
+            paddle: isPaddleConfigured(),
+          }}
           source="EMBED"
         />
       </div>

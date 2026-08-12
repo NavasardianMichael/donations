@@ -1,29 +1,46 @@
 import { z } from "zod";
 
-import { ABSOLUTE_MIN_AMOUNT_MINOR, MAX_AMOUNT_MINOR } from "@/lib/fees";
+import { ABSOLUTE_MIN_AMOUNT_MINOR, MAX_AMOUNT_MINOR, amountBounds } from "@/lib/fees";
 
 import type { MessageResolver } from "./resolver";
+
+/**
+ * Which gateway the donor chose.
+ *
+ * Mirrors the `PaymentProvider` enum. The two are not interchangeable — ARCA
+ * charges the page's own currency and PADDLE charges USD — so this decides
+ * which amount ladder and which bounds apply.
+ */
+export const PAYMENT_METHODS = ["ARCA", "PADDLE"] as const;
+export const paymentMethodSchema = z.enum(PAYMENT_METHODS);
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /**
  * What the donation form submits to start a checkout.
  *
  * The amount arriving here is UNTRUSTED regardless of what this schema
  * allows — `createCheckoutAction` re-validates it against the page's own
- * `minAmountMinor` and, when custom amounts are disabled, against its
- * `suggestedAmounts`. This schema only rejects values that could never be
+ * minimum and, when custom amounts are disabled, against the suggested ladder
+ * FOR THE CHOSEN METHOD. This schema only rejects values that could never be
  * valid for ANY page (negative, absurdly large, non-integer).
+ *
+ * `bounds` must be the bounds for the charged currency, not the page's display
+ * currency: 100_00 minor units is 100 ֏ but $100, so reusing the AMD floor for
+ * a Paddle checkout would reject every realistic international donation.
  */
-export const checkoutSchema = (t: MessageResolver, formattedMinimum: string) =>
+export const checkoutSchema = (
+  t: MessageResolver,
+  formattedMinimum: string,
+  bounds = amountBounds("amd"),
+) =>
   z.object({
     pageId: z.string().min(1),
+    method: paymentMethodSchema.default("ARCA"),
     amountMinor: z
       .number()
       .int(t("amount.whole"))
-      .min(
-        ABSOLUTE_MIN_AMOUNT_MINOR,
-        t("amount.tooSmall", { min: formattedMinimum }),
-      )
-      .max(MAX_AMOUNT_MINOR, t("amount.tooLarge")),
+      .min(bounds.minMinor, t("amount.tooSmall", { min: formattedMinimum }))
+      .max(bounds.maxMinor, t("amount.tooLarge")),
     donorName: z.string().trim().max(80).optional().or(z.literal("")),
     donorEmail: z
       .string()

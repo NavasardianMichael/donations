@@ -20,7 +20,7 @@ export default function DashboardError({
   }, [error]);
 
   return (
-    <div className="mx-auto flex max-w-content flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-10">
+    <div className="flex flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-10">
       <Heading level={1} size="lg">
         {t("serverErrorTitle")}
       </Heading>

@@ -14,17 +14,18 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * Deliberate placeholder.
  *
- * No payment provider is integrated, so there is nothing to pay out and
- * nothing to configure. The route exists so the concept is not forgotten and
- * so the nav entry has somewhere to go — see the "No payments" section of
- * AGENTS.md before adding anything real here.
+ * Donations are collected — ArCa settles to the platform's acquiring bank and
+ * Paddle pays out as merchant of record — but neither is split per creator yet,
+ * so there is nothing here to configure. Paying creators out is a separate
+ * problem involving each provider's own payout model, and building it needs an
+ * explicit request: see the "Two payment providers" section of AGENTS.md.
  */
 export default async function PayoutsPage() {
   await requireUser();
   const t = await getTranslations("payouts");
 
   return (
-    <div className="mx-auto max-w-form space-y-6 px-4 py-8 sm:px-6 lg:px-10">
+    <div className="space-y-6 px-4 py-8 sm:px-6 lg:px-10">
       <header>
         <Heading level={1} size="display">
           {t("title")}

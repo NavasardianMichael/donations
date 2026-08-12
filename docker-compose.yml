@@ -1,8 +1,8 @@
 # Local Postgres for development.
 #
-#   docker compose up -d
-#   pnpm db:migrate
-#   pnpm db:seed
+# `pnpm install` brings this up, waits for it and migrates it — see
+# scripts/setup.mjs. Start it by hand with `docker compose up -d` only when you
+# want it running without an install.
 #
 # `pgbouncer` mirrors production's pooled connection so the app is exercised
 # against the same topology it will be deployed on. Point DATABASE_URL at

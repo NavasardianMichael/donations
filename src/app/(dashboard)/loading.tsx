@@ -7,7 +7,7 @@ export default async function DashboardLoading() {
 
   return (
     <div
-      className="mx-auto max-w-content space-y-6 px-4 py-8 sm:px-6 lg:px-10"
+      className="space-y-6 px-4 py-8 sm:px-6 lg:px-10"
       role="status"
       aria-live="polite"
       aria-label={t("loading")}

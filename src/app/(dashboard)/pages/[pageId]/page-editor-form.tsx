@@ -34,14 +34,20 @@ export interface EditablePage {
   coverImageUrl: string | null;
   currency: CurrencyCode;
   suggestedAmounts: number[];
+  /** The international ladder, in USD cents. */
+  suggestedAmountsUsd: number[];
   allowCustomAmount: boolean;
   minAmountMinor: number;
+  minAmountMinorUsd: number;
   goalAmountMinor: number | null;
   showProgressBar: boolean;
   collectDonorName: boolean;
   collectMessage: boolean;
   thankYouMessage: string | null;
 }
+
+/** Paddle settles in USD; the international ladder is always denominated here. */
+const INTERNATIONAL_CURRENCY = "usd";
 
 /**
  * Amounts, goal, description, thank-you message.
@@ -54,7 +60,13 @@ export interface EditablePage {
  * against the same `updatePageSchema` the server re-checks — this copy is for
  * a faster error round-trip, not a second source of truth.
  */
-export function PageEditorForm({ page }: { page: EditablePage }) {
+export function PageEditorForm({
+  page,
+  paddleConfigured,
+}: {
+  page: EditablePage;
+  paddleConfigured: boolean;
+}) {
   const t = useTranslations("pageSettings");
   const tc = useTranslations("common");
 
@@ -74,6 +86,16 @@ export function PageEditorForm({ page }: { page: EditablePage }) {
   );
   const [minAmountText, setMinAmountText] = useState(
     formatMoneyPlain(page.minAmountMinor, page.currency),
+  );
+  // Always USD, never `currency` — this ladder exists precisely because Paddle
+  // cannot charge the page's own currency.
+  const [amountsUsdText, setAmountsUsdText] = useState(
+    page.suggestedAmountsUsd
+      .map((minor) => formatMoneyPlain(minor, INTERNATIONAL_CURRENCY))
+      .join(", "),
+  );
+  const [minAmountUsdText, setMinAmountUsdText] = useState(
+    formatMoneyPlain(page.minAmountMinorUsd, INTERNATIONAL_CURRENCY),
   );
   const [goalText, setGoalText] = useState(
     page.goalAmountMinor !== null
@@ -121,6 +143,34 @@ export function PageEditorForm({ page }: { page: EditablePage }) {
       return;
     }
 
+    const suggestedAmountsUsd = amountsUsdText
+      .split(",")
+      .map((piece) => piece.trim())
+      .filter(Boolean)
+      .map((piece) => parseMoneyToMinor(piece, INTERNATIONAL_CURRENCY));
+
+    if (suggestedAmountsUsd.some((amount) => amount === null)) {
+      setFieldErrors({ suggestedAmountsUsd: t("amountsInvalid") });
+      return;
+    }
+
+    // Checked here as well as in the schema so the creator gets the error
+    // without a round-trip: an unpaired chip would leave a donor switching to
+    // the international method with no equivalent for the amount they picked.
+    if (suggestedAmountsUsd.length !== suggestedAmounts.length) {
+      setFieldErrors({ suggestedAmountsUsd: t("amountsUsdLengthMismatch") });
+      return;
+    }
+
+    const minAmountMinorUsd = parseMoneyToMinor(
+      minAmountUsdText,
+      INTERNATIONAL_CURRENCY,
+    );
+    if (minAmountMinorUsd === null) {
+      setFieldErrors({ minAmountMinorUsd: t("amountsInvalid") });
+      return;
+    }
+
     startTransition(async () => {
       const result = await updatePageAction({
         id: page.id,
@@ -129,8 +179,10 @@ export function PageEditorForm({ page }: { page: EditablePage }) {
         coverImageUrl,
         currency,
         suggestedAmounts: suggestedAmounts as number[],
+        suggestedAmountsUsd: suggestedAmountsUsd as number[],
         allowCustomAmount,
         minAmountMinor,
+        minAmountMinorUsd,
         goalAmountMinor,
         showProgressBar,
         collectDonorName,
@@ -244,6 +296,43 @@ export function PageEditorForm({ page }: { page: EditablePage }) {
         </CardContent>
       </Card>
 
+      {paddleConfigured ? (
+        <Card>
+          <CardHeader bordered>
+            <CardTitle>{t("internationalSection")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5 py-5">
+            <Alert variant="info" title={t("internationalTitle")}>
+              {t("internationalBody")}
+            </Alert>
+
+            <Field
+              label={t("suggestedAmountsUsd")}
+              description={t("suggestedAmountsUsdHint")}
+              error={fieldErrors.suggestedAmountsUsd}
+            >
+              <Input
+                leading={CURRENCIES[INTERNATIONAL_CURRENCY].symbol}
+                value={amountsUsdText}
+                onChange={(e) => setAmountsUsdText(e.target.value)}
+                placeholder="5, 25, 50"
+              />
+            </Field>
+
+            <Field
+              label={t("minAmountUsd")}
+              error={fieldErrors.minAmountMinorUsd}
+            >
+              <Input
+                leading={CURRENCIES[INTERNATIONAL_CURRENCY].symbol}
+                value={minAmountUsdText}
+                onChange={(e) => setMinAmountUsdText(e.target.value)}
+              />
+            </Field>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader bordered>
           <CardTitle>{t("goalSection")}</CardTitle>
@@ -309,7 +398,7 @@ export function PageEditorForm({ page }: { page: EditablePage }) {
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-20 z-10 flex flex-col-reverse gap-2 rounded-sm border border-subtle bg-surface/95 p-3 backdrop-blur sm:flex-row sm:justify-end md:bottom-4">
+      <div className="sticky bottom-4 z-10 flex flex-col-reverse gap-2 rounded-sm border border-subtle bg-surface/95 p-3 backdrop-blur sm:flex-row sm:justify-end">
         <Button
           type="button"
           variant="outline"

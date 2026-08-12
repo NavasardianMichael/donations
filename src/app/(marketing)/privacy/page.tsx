@@ -16,15 +16,19 @@ const SECTION_KEYS = [
   "contact",
 ] as const;
 
+/** `subtitle` interpolates {brand}, so metadata has to supply it too. */
+const VALUES = { brand: BRAND.name, domain: BRAND.domain };
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("privacy");
+  const subtitle = t("subtitle", VALUES);
   return {
     title: t("title"),
-    description: t("subtitle"),
+    description: subtitle,
     alternates: { canonical: "/privacy" },
     openGraph: {
       title: `${t("title")} · ${BRAND.name}`,
-      description: t("subtitle"),
+      description: subtitle,
       type: "website",
     },
   };
@@ -32,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PrivacyPage() {
   const t = await getTranslations("privacy");
-  const values = { brand: BRAND.name, domain: BRAND.domain };
+  const values = VALUES;
 
   return (
     <LegalPage

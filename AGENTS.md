@@ -12,8 +12,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Multi-tenant donation platform for the ARMENIAN market. Creators publish
 donation pages at `/d/[slug]`, embed them via iframe, and track donations and
-traffic. The platform takes a 5% fee per transaction — a displayed figure
-only; see "No payments" below.
+traffic. The platform takes a 5% fee per transaction. Payments are live through
+two providers — see "Two payment providers" below.
 
 ## Version notes that differ from common defaults
 
@@ -69,21 +69,50 @@ groups and before `֏`. Normalise first, as `src/lib/fees.test.ts` does.
 `BRAND` in `src/lib/brand.ts` is the only place the product name appears.
 Never write "Նվիրիր" (or any other name) as a literal.
 
-## No payments
+## Two payment providers
 
-There is **no payment provider integrated, and none should be added** without
-an explicit request. Concretely:
+Real money moves. **ArCa** takes Armenian cards in AMD; **Paddle** takes
+international cards in USD. The donor picks on the public page. Do not add a
+third provider without an explicit request.
 
-- The Donate button on a public page is **disabled**, with a notice that
-  donations are not enabled yet. The amount selector still renders and
-  validates, because it is part of the design.
-- **The app never writes a `Donation` row.** That table is populated by the
-  seed script and read by the dashboard, donation history and analytics.
-- `src/lib/fees.ts` computes the 5% platform fee for _display_ only. Nothing
-  moves money. A processor's own fee is a second, separate concept and belongs
-  in that file when the time comes.
-- Do not install a payment SDK, add provider env vars, create webhook routes,
-  or build onboarding/payout screens.
+- `src/lib/payments/arca.ts` — BPC/RBS "iPay" gateway. Redirect to its hosted
+  card page, then confirm with a server-to-server `getOrderStatus`.
+- `src/lib/payments/paddle.ts` — Paddle Billing, merchant of record. A
+  server-created transaction, an overlay opened by Paddle.js on our own page,
+  then a signed webhook. Raw `fetch` + `node:crypto`; there is no server SDK.
+- Either provider missing its env keys hides that option instead of failing to
+  boot. With neither, the Donate button is disabled and the amount selector
+  still renders — it is part of the design.
+
+Rules that are easy to break and expensive to get wrong:
+
+- **A browser is never evidence.** A gateway redirect, a `checkout.completed`
+  event and an unverified webhook body all prove only that something happened
+  somewhere. A donation becomes `SUCCEEDED` on exactly three paths: ArCa's
+  `getOrderStatus`, a signature-verified Paddle webhook, and the reconcile
+  sweep. Nowhere else.
+- **Read the raw body before parsing it.** `verifyWebhookSignature` hashes the
+  exact bytes Paddle sent; `await request.json()` first and every signature
+  fails.
+- **Anything provider-specific is filtered by `provider`.** `providerOrderId`
+  holds an ArCa order id on one row and a `txn_…` on the next. The reconcile
+  sweep queries per provider for this reason — handing one gateway the other's
+  id fails, and after 24h would mark real payments expired.
+- **Paddle cannot settle AMD.** International donations are denominated in USD
+  from `DonationPage.suggestedAmountsUsd`, a ladder the creator authors beside
+  the AMD one. Nothing in this codebase converts currency or holds an exchange
+  rate; the creator's two ladders are the only rate that exists.
+- **Never sum `Donation.amountMinor` across rows.** It is USD cents on a Paddle
+  row and AMD luma on an ArCa one. Every total sums `pageAmountMinor`, the
+  page-currency equivalent frozen at creation. Individual rows still _display_
+  `amountMinor` + `currency`, because that is what the donor was charged.
+- `src/lib/fees.ts` owns the 5% platform fee. A processor's own fee is a second,
+  separate concept — Paddle deducts its cut before payout — and belongs in that
+  file if it is ever recorded.
+- Amount **bounds are not currency-agnostic**: `100_00` minor units is 100 ֏ but
+  $100. Use `amountBounds(currency)`, never the bare AMD constants.
+- Payouts to creators are still a placeholder. Do not build payout or
+  onboarding screens without an explicit request.
 
 ## Non-negotiables
 
@@ -104,6 +133,11 @@ an explicit request. Concretely:
 7. **No raw palette values in app code.** `bg-accent`, not `bg-orange-500`.
 8. **Tailwind classes are never built by concatenation** — the scanner reads
    source text. Map to full class strings.
+9. **Nothing in the layout is `position: fixed`.** The dashboard shell is a flex
+   row — sidebar, then a workspace column whose single scroll region holds the
+   page. No element reserves space for another with padding. Read
+   `docs/ui-conventions.md` before writing any positioning, scrolling, height
+   or `z-index` CSS; it lists the patterns to avoid and why.
 
 ## Layout
 
@@ -129,7 +163,12 @@ tablet and mobile variants.
 ## Commands
 
 ```
-pnpm dev            docker compose up -d   # Postgres + PgBouncer
-pnpm build          pnpm typecheck         pnpm test
+pnpm install        # scripts/setup.mjs: generate, compose up, migrate, seed
+pnpm dev            pnpm build             pnpm typecheck    pnpm test
+pnpm setup          # re-run the install-time setup on its own
 pnpm db:migrate     pnpm db:seed           pnpm db:studio
 ```
+
+`postinstall` applies migrations, so never tell anyone to run `prisma migrate
+deploy` by hand. After changing `schema.prisma`, `pnpm db:migrate` to author the
+migration — every other machine picks it up on its next install.

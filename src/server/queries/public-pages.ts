@@ -24,15 +24,18 @@ export const getPublicPageBySlug = cache(async function getPublicPageBySlug(
 
   if (!page) return null;
 
+  // `pageAmountMinor`, never `amountMinor`: an international donation is charged
+  // in USD, so summing the charged amounts would add cents to luma and produce
+  // a progress bar that means nothing.
   const raised = await prisma.donation.aggregate({
     where: { pageId: page.id, status: "SUCCEEDED" },
-    _sum: { amountMinor: true },
+    _sum: { pageAmountMinor: true },
     _count: { _all: true },
   });
 
   return {
     ...page,
-    raisedMinor: raised._sum.amountMinor ?? 0,
+    raisedMinor: raised._sum.pageAmountMinor ?? 0,
     donationCount: raised._count._all,
   };
 });

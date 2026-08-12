@@ -7,6 +7,7 @@ import { Avatar, Heading, Lead, ProgressBar, Text } from "@/components/ui";
 import { DonationForm } from "@/components/donation/donation-form";
 import { TrackBeacon } from "@/components/donation/track-beacon";
 import { isArcaConfigured } from "@/lib/payments/arca";
+import { isPaddleConfigured } from "@/lib/payments/paddle";
 import { formatRelativeTime } from "@/lib/utils";
 import {
   getPublicPageBySlug,
@@ -109,10 +110,15 @@ export default async function DonationPage(props: {
           currency={page.currency}
           suggestedAmounts={page.suggestedAmounts}
           minAmountMinor={page.minAmountMinor}
+          suggestedAmountsUsd={page.suggestedAmountsUsd}
+          minAmountMinorUsd={page.minAmountMinorUsd}
           allowCustomAmount={page.allowCustomAmount}
           collectDonorName={page.collectDonorName}
           collectMessage={page.collectMessage}
-          arcaConfigured={isArcaConfigured()}
+          providers={{
+            arca: isArcaConfigured(),
+            paddle: isPaddleConfigured(),
+          }}
           source="DIRECT"
         />
       </div>

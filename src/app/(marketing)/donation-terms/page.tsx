@@ -24,6 +24,10 @@ function feeValues() {
 
 const SECTION_KEYS = [
   "scope",
+  // Which card is taken where, and in which currency. International donations
+  // are charged in USD because Paddle cannot settle drams — a donor is entitled
+  // to read that before paying, not discover it on a statement.
+  "methods",
   "fee",
   "example",
   "payouts",
@@ -33,13 +37,16 @@ const SECTION_KEYS = [
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("donationTerms");
+  // `subtitle` interpolates {brand}, so metadata needs the same values the
+  // page body passes.
+  const subtitle = t("subtitle", feeValues());
   return {
     title: t("title"),
-    description: t("subtitle"),
+    description: subtitle,
     alternates: { canonical: "/donation-terms" },
     openGraph: {
       title: `${t("title")} · ${BRAND.name}`,
-      description: t("subtitle"),
+      description: subtitle,
       type: "website",
     },
   };

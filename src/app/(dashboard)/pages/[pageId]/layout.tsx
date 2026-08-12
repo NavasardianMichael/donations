@@ -24,7 +24,7 @@ export default async function PageLayout({
   if (!page) notFound();
 
   return (
-    <div className="mx-auto max-w-form px-4 pt-6 sm:px-6 lg:px-10">
+    <div className="px-4 pt-6 sm:px-6 lg:px-10">
       <PageTabNav pageId={page.id} title={page.title} />
       <div className="pb-8">{children}</div>
     </div>

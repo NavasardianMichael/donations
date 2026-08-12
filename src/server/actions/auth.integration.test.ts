@@ -145,6 +145,7 @@ describe("signUpAction", () => {
       name: "Integration Test",
       email: EMAIL,
       password: "CorrectHorse9Battery",
+      confirmPassword: "CorrectHorse9Battery",
       website: "",
     });
 
@@ -170,6 +171,7 @@ describe("signUpAction", () => {
       name: "Integration Test",
       email: EMAIL,
       password: "short",
+      confirmPassword: "short",
       website: "",
     });
 
@@ -178,11 +180,28 @@ describe("signUpAction", () => {
     expect(await prisma.user.count({ where: { email: EMAIL } })).toBe(0);
   });
 
+  it("rejects a mismatched confirmation without creating anything", async () => {
+    // The browser checks this too, but the action is a public endpoint.
+    const result = await signUpAction({
+      name: "Integration Test",
+      email: EMAIL,
+      password: "CorrectHorse9Battery",
+      confirmPassword: "DoesNotMatch9Here",
+      website: "",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.fieldErrors?.confirmPassword).toBeTruthy();
+    expect(await prisma.user.count({ where: { email: EMAIL } })).toBe(0);
+    expect(sentEmails).toHaveLength(0);
+  });
+
   it("silently no-ops when the honeypot is filled", async () => {
     const result = await signUpAction({
       name: "Spam Bot",
       email: EMAIL,
       password: "CorrectHorse9Battery",
+      confirmPassword: "CorrectHorse9Battery",
       website: "http://spam.example",
     });
 
@@ -197,6 +216,7 @@ describe("signUpAction", () => {
       name: "Integration Test",
       email: EMAIL,
       password: "CorrectHorse9Battery",
+      confirmPassword: "CorrectHorse9Battery",
       website: "",
     });
     sentEmails.length = 0;
@@ -205,6 +225,7 @@ describe("signUpAction", () => {
       name: "Someone Else",
       email: EMAIL,
       password: "DifferentPassword7Here",
+      confirmPassword: "DifferentPassword7Here",
       website: "",
     });
 
@@ -229,6 +250,7 @@ describe("rate limiting", () => {
         name: "Flooder",
         email: `flood-${n}@givedirect.test`,
         password: "CorrectHorse9Battery",
+        confirmPassword: "CorrectHorse9Battery",
         website: "",
       });
 
@@ -262,6 +284,7 @@ describe("verifyEmailAction", () => {
       name: "Integration Test",
       email: EMAIL,
       password: "CorrectHorse9Battery",
+      confirmPassword: "CorrectHorse9Battery",
       website: "",
     });
 
@@ -285,6 +308,7 @@ describe("verifyEmailAction", () => {
       name: "Integration Test",
       email: EMAIL,
       password: "CorrectHorse9Battery",
+      confirmPassword: "CorrectHorse9Battery",
       website: "",
     });
 
@@ -305,6 +329,7 @@ describe("password reset", () => {
       name: "Integration Test",
       email: EMAIL,
       password: "CorrectHorse9Battery",
+      confirmPassword: "CorrectHorse9Battery",
       website: "",
     });
     await verifyEmailAction(tokenFromLastEmail());

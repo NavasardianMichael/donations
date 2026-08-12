@@ -26,7 +26,7 @@ export default async function ContactPage() {
   const t = await getTranslations("contact");
 
   return (
-    <div className="mx-auto max-w-form px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+    <div className="px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
       <header className="text-center">
         <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-accent-subtle">
           <Mail className="size-6 text-accent" aria-hidden="true" />

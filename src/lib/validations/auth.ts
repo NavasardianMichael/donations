@@ -34,21 +34,32 @@ export const passwordSchema = (t: MessageResolver) =>
     );
 
 export const signUpSchema = (t: MessageResolver) =>
-  z.object({
-    name: z
-      .string()
-      .trim()
-      .min(2, t("name.required"))
-      .max(80, t("name.tooLong")),
-    email: emailSchema(t),
-    password: passwordSchema(t),
+  z
+    .object({
+      name: z
+        .string()
+        .trim()
+        .min(2, t("name.required"))
+        .max(80, t("name.tooLong")),
+      email: emailSchema(t),
+      password: passwordSchema(t),
+      confirmPassword: z.string().min(1, t("password.confirmRequired")),
+      /**
+       * Honeypot. Deliberately permissive: if the schema rejected a filled
+       * honeypot, the caller would get a validation error telling them which
+       * field tripped. The action accepts and silently discards instead.
+       */
+      website: z.string().max(200).optional(),
+    })
     /**
-     * Honeypot. Deliberately permissive: if the schema rejected a filled
-     * honeypot, the caller would get a validation error telling them which
-     * field tripped. The action accepts and silently discards instead.
+     * Checked here, not only in the browser: the signup Server Action is a
+     * public HTTP endpoint, so the confirmation is re-derived server-side like
+     * every other rule. Mirrors `resetPasswordSchema` below.
      */
-    website: z.string().max(200).optional(),
-  });
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("password.mismatch"),
+      path: ["confirmPassword"],
+    });
 
 export const signInSchema = (t: MessageResolver) =>
   z.object({

@@ -26,11 +26,17 @@ import {
   unpublishPageAction,
 } from "@/server/actions/pages";
 
+/** Every action here mutates the page, so every one asks first. */
+type Confirmable = "publish" | "unpublish" | "duplicate" | "delete";
+
 /**
  * Publish / unpublish / duplicate / delete for one page.
  *
- * Delete goes through an AlertDialog because it is destructive and not
- * one-click undoable. The others are reversible, so they fire directly.
+ * These sit in a dense icon row, one mis-tap apart, and each one is visible to
+ * donors the moment it lands — publishing exposes a page, unpublishing takes a
+ * live one down, duplicating adds a draft to the list. So all four route
+ * through the same AlertDialog; only the copy and the confirm button differ.
+ * Settings is a link, not a mutation, and goes straight through.
  */
 export function PageActions({
   pageId,
@@ -48,7 +54,11 @@ export function PageActions({
   const tp = useTranslations("pages");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  // `kind` outlives `open` so the dialog keeps its copy while it animates out.
+  const [confirm, setConfirm] = useState<{ open: boolean; kind: Confirmable }>({
+    open: false,
+    kind: "delete",
+  });
 
   const published = status === "PUBLISHED";
 
@@ -63,6 +73,49 @@ export function PageActions({
       }
     });
   }
+
+  const CONFIRM: Record<
+    Confirmable,
+    {
+      title: string;
+      body: string;
+      confirmLabel: string;
+      variant: "primary" | "destructive";
+      action: () => Promise<{ ok: boolean; message?: string }>;
+    }
+  > = {
+    publish: {
+      title: tp("publishConfirmTitle"),
+      body: tp("publishConfirmBody", { title }),
+      confirmLabel: t("publish"),
+      variant: "primary",
+      action: () => publishPageAction({ id: pageId }),
+    },
+    unpublish: {
+      title: tp("unpublishConfirmTitle"),
+      body: tp("unpublishConfirmBody", { title }),
+      confirmLabel: t("unpublish"),
+      variant: "primary",
+      action: () => unpublishPageAction({ id: pageId }),
+    },
+    duplicate: {
+      title: tp("duplicateConfirmTitle"),
+      body: tp("duplicateConfirmBody", { title }),
+      confirmLabel: t("duplicate"),
+      variant: "primary",
+      action: () => duplicatePageAction({ id: pageId }),
+    },
+    delete: {
+      title: tp("deleteConfirmTitle"),
+      body: tp("deleteConfirmBody", { title }),
+      confirmLabel: t("delete"),
+      variant: "destructive",
+      action: () => deletePageAction({ id: pageId }),
+    },
+  };
+
+  const active = CONFIRM[confirm.kind];
+  const ask = (kind: Confirmable) => setConfirm({ open: true, kind });
 
   const withLabels = layout === "labels";
 
@@ -86,13 +139,7 @@ export function PageActions({
           icon={published ? EyeOff : Upload}
           withLabel={withLabels}
           disabled={pending}
-          onClick={() =>
-            run(() =>
-              published
-                ? unpublishPageAction({ id: pageId })
-                : publishPageAction({ id: pageId }),
-            )
-          }
+          onClick={() => ask(published ? "unpublish" : "publish")}
         />
 
         <PageActionButton
@@ -100,7 +147,7 @@ export function PageActions({
           icon={Copy}
           withLabel={withLabels}
           disabled={pending}
-          onClick={() => run(() => duplicatePageAction({ id: pageId }))}
+          onClick={() => ask("duplicate")}
         />
 
         <PageActionButton
@@ -109,24 +156,26 @@ export function PageActions({
           withLabel={withLabels}
           destructive
           disabled={pending}
-          onClick={() => setConfirmOpen(true)}
+          onClick={() => ask("delete")}
         />
       </div>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog
+        open={confirm.open}
+        onOpenChange={(open) => setConfirm((c) => ({ ...c, open }))}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{tp("deleteConfirmTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {tp("deleteConfirmBody", { title })}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{active.title}</AlertDialogTitle>
+            <AlertDialogDescription>{active.body}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tp("cancel")}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => run(() => deletePageAction({ id: pageId }))}
+              variant={active.variant}
+              onClick={() => run(active.action)}
             >
-              {t("delete")}
+              {active.confirmLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

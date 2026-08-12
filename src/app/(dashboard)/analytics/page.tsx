@@ -20,7 +20,7 @@ export default async function AnalyticsPage(props: {
   const range = parseAnalyticsRange(searchParams.range);
 
   return (
-    <div className="mx-auto max-w-content px-4 py-8 sm:px-6 lg:px-10">
+    <div className="px-4 py-8 sm:px-6 lg:px-10">
       <AnalyticsView
         userId={user.id}
         range={range}

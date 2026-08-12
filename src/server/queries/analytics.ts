@@ -88,7 +88,9 @@ export const getAnalyticsSummary = cache(async function getAnalyticsSummary(
         status: "SUCCEEDED",
         createdAt: { gte: from, lt: to },
       },
-      _sum: { amountMinor: true },
+      // Page-currency equivalents — see Donation.pageAmountMinor. Summing the
+      // charged amounts would mix USD cents into AMD luma.
+      _sum: { pageAmountMinor: true },
       _count: { _all: true },
     }),
     prisma.pageView.count({
@@ -101,7 +103,7 @@ export const getAnalyticsSummary = cache(async function getAnalyticsSummary(
   ]);
 
   const donationCount = donationAgg._count._all;
-  const raisedMinor = donationAgg._sum.amountMinor ?? 0;
+  const raisedMinor = donationAgg._sum.pageAmountMinor ?? 0;
 
   return {
     raisedMinor,
@@ -221,7 +223,8 @@ export const getAnalyticsByPage = cache(async function getAnalyticsByPage(
         createdAt: { gte: from, lt: to },
       },
       _count: { _all: true },
-      _sum: { amountMinor: true },
+      // Page-currency equivalents — see Donation.pageAmountMinor.
+      _sum: { pageAmountMinor: true },
     }),
   ]);
 
@@ -233,7 +236,7 @@ export const getAnalyticsByPage = cache(async function getAnalyticsByPage(
       g.pageId,
       {
         count: g._count._all,
-        raised: g._sum.amountMinor ?? 0,
+        raised: g._sum.pageAmountMinor ?? 0,
       },
     ]),
   );
@@ -325,7 +328,9 @@ export async function rollupDailyStatsForDay(day: Date): Promise<number> {
         status: "SUCCEEDED",
         createdAt: { gte: from, lt: to },
       },
-      select: { pageId: true, amountMinor: true },
+      // Page-currency equivalents, so a day's total is one currency even when
+      // it mixes ArCa (AMD) and Paddle (USD) donations.
+      select: { pageId: true, pageAmountMinor: true },
     }),
   ]);
 
@@ -364,7 +369,7 @@ export async function rollupDailyStatsForDay(day: Date): Promise<number> {
       buckets.set(donation.pageId, bucket);
     }
     bucket.donationCount += 1;
-    bucket.amountMinor += donation.amountMinor;
+    bucket.amountMinor += donation.pageAmountMinor;
   }
 
   // Also zero-out days that previously had rows but now have no activity

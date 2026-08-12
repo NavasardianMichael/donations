@@ -1,9 +1,15 @@
 import { z } from "zod";
 
-import { ABSOLUTE_MIN_AMOUNT_MINOR, MAX_AMOUNT_MINOR } from "@/lib/fees";
+import {
+  ABSOLUTE_MIN_AMOUNT_MINOR,
+  MAX_AMOUNT_MINOR,
+  amountBounds,
+} from "@/lib/fees";
 
 import type { MessageResolver } from "./resolver";
 import { slugSchema } from "./slug";
+
+const USD_BOUNDS = amountBounds("usd");
 
 /**
  * AMD first — the platform serves the Armenian market. USD and EUR stay
@@ -59,11 +65,37 @@ export const updatePageSchema = (t: MessageResolver) =>
         (amounts) => new Set(amounts).size === amounts.length,
         t("page.amountsUnique"),
       ),
+    /**
+     * The international ladder, in USD cents, index-matched to
+     * `suggestedAmounts`. Paddle cannot charge AMD, so the creator authors
+     * these rather than the platform guessing an exchange rate. The lengths are
+     * checked together at the object level below — a mismatch would silently
+     * leave an AMD chip with no international counterpart.
+     */
+    suggestedAmountsUsd: z
+      .array(
+        z
+          .number()
+          .int(t("amount.whole"))
+          .min(USD_BOUNDS.minMinor, t("amount.tooSmall", { min: "$1" }))
+          .max(USD_BOUNDS.maxMinor, t("amount.tooLarge")),
+      )
+      .min(1, t("page.amountsMin"))
+      .max(6, t("page.amountsMax"))
+      .refine(
+        (amounts) => new Set(amounts).size === amounts.length,
+        t("page.amountsUnique"),
+      ),
     allowCustomAmount: z.boolean(),
     minAmountMinor: minorSchema(t).min(
       ABSOLUTE_MIN_AMOUNT_MINOR,
       t("amount.whole"),
     ),
+    minAmountMinorUsd: z
+      .number()
+      .int(t("amount.whole"))
+      .min(USD_BOUNDS.minMinor, t("amount.tooSmall", { min: "$1" }))
+      .max(USD_BOUNDS.maxMinor, t("amount.tooLarge")),
     goalAmountMinor: minorSchema(t).nullable(),
     showProgressBar: z.boolean(),
     collectDonorName: z.boolean(),
@@ -74,7 +106,14 @@ export const updatePageSchema = (t: MessageResolver) =>
       .max(500, t("message.tooLong"))
       .optional()
       .or(z.literal("")),
-  });
+  })
+    .refine(
+      (page) => page.suggestedAmounts.length === page.suggestedAmountsUsd.length,
+      {
+        message: t("page.amountsUsdLengthMismatch"),
+        path: ["suggestedAmountsUsd"],
+      },
+    );
 
 export const updatePageSeoSchema = (t: MessageResolver) =>
   z.object({

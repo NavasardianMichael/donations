@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type {
   DonationStatus,
+  PaymentProvider,
   TrafficSource,
 } from "../src/generated/prisma/enums";
 
@@ -147,8 +148,12 @@ async function main() {
       publishedAt: daysAgo(58),
       currency: "amd",
       suggestedAmounts: [AMD(1_000), AMD(5_000), AMD(10_000)],
+      // The international ladder the creator authored to pair with the above.
+      // Paddle cannot charge AMD, so these are not converted — they are chosen.
+      suggestedAmountsUsd: [2_50, 12_50, 25_00],
       allowCustomAmount: true,
       minAmountMinor: AMD(100),
+      minAmountMinorUsd: 1_00,
       goalAmountMinor: AMD(5_000_000),
       showProgressBar: true,
       collectDonorName: true,
@@ -175,6 +180,7 @@ async function main() {
       status: "DRAFT",
       currency: "amd",
       suggestedAmounts: [AMD(5_000), AMD(10_000), AMD(25_000)],
+      suggestedAmountsUsd: [12_50, 25_00, 60_00],
       goalAmountMinor: AMD(20_000_000),
       collectMessage: false,
       createdAt: daysAgo(12),
@@ -192,6 +198,7 @@ async function main() {
       publishedAt: daysAgo(400),
       currency: "amd",
       suggestedAmounts: [AMD(1_000), AMD(5_000), AMD(10_000)],
+      suggestedAmountsUsd: [2_50, 12_50, 25_00],
       goalAmountMinor: AMD(10_000_000),
       createdAt: daysAgo(420),
     },
@@ -213,9 +220,11 @@ async function main() {
     pageId: string;
     amountMinor: number;
     currency: string;
+    pageAmountMinor: number;
     platformFeeMinor: number;
     netToCreatorMinor: number | null;
     status: DonationStatus;
+    provider: PaymentProvider;
     donorName: string | null;
     donorEmail: string | null;
     message: string | null;
@@ -240,6 +249,21 @@ async function main() {
     AMD(50_000),
   ];
 
+  /**
+   * International donations, as [USD cents, AMD equivalent in luma].
+   *
+   * Paired rather than converted, because that is exactly how the app works: the
+   * creator authors both ladders and the pairing IS the rate. Seeding a mix of
+   * providers is what proves the dashboard totals are not adding cents to luma.
+   */
+  const USD_AMOUNTS: [usd: number, amd: number][] = [
+    [5_00, AMD(2_000)],
+    [10_00, AMD(4_000)],
+    [25_00, AMD(10_000)],
+    [50_00, AMD(20_000)],
+    [100_00, AMD(40_000)],
+  ];
+
   for (let i = 0; i < TARGET_DONATIONS; i++) {
     // Bias recent: square the uniform draw so more donations land near today.
     const dayOffset = Math.floor(DAYS * random() * random());
@@ -249,7 +273,14 @@ async function main() {
     const target =
       roll < donationPages[0]!.weight ? donationPages[0]! : donationPages[1]!;
 
-    const amountMinor = pick(AMOUNTS);
+    // Roughly one in six donors gives from abroad, through Paddle in USD.
+    const isInternational = random() < 0.16;
+    const international = pick(USD_AMOUNTS);
+    const amountMinor = isInternational ? international[0] : pick(AMOUNTS);
+    // What the donation is worth in the page's own currency — the only figure
+    // any total may sum. See Donation.pageAmountMinor.
+    const pageAmountMinor = isInternational ? international[1] : amountMinor;
+
     const isAnonymous = random() < 0.2;
     const name = isAnonymous ? null : pick(DONOR_NAMES);
 
@@ -270,10 +301,13 @@ async function main() {
     donations.push({
       pageId: target.page.id,
       amountMinor,
-      currency: target.page.currency,
+      // Paddle settles USD; ArCa settles the page's own currency.
+      currency: isInternational ? "usd" : target.page.currency,
+      pageAmountMinor,
       platformFeeMinor: fee,
       netToCreatorMinor: succeeded ? amountMinor - fee : null,
       status,
+      provider: isInternational ? "PADDLE" : "ARCA",
       donorName: name,
       // Armenian names are not valid ASCII local-parts; index instead.
       donorEmail: name ? `donor${i}@example.am` : null,
@@ -359,7 +393,8 @@ async function main() {
     if (donation.status !== "SUCCEEDED") continue;
     const bucket = bucketFor(donation.pageId, donation.createdAt);
     bucket.donationCount += 1;
-    bucket.amountMinor += donation.amountMinor;
+    // Page-currency equivalents, matching what the nightly rollup cron sums.
+    bucket.amountMinor += donation.pageAmountMinor;
   }
 
   await prisma.pageDailyStat.createMany({
@@ -397,6 +432,7 @@ async function main() {
       publishedAt: daysAgo(20),
       goalAmountMinor: AMD(3_000_000),
       suggestedAmounts: [AMD(1_000), AMD(3_000), AMD(5_000)],
+      suggestedAmountsUsd: [2_50, 7_50, 12_50],
     },
   });
   console.log(`Created second user ${other.email} for ownership tests`);

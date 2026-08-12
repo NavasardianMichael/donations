@@ -43,7 +43,7 @@ export default async function ManagePagesPage(props: {
   const hasAnyPages = counts.ALL > 0;
 
   return (
-    <div className="mx-auto max-w-content space-y-6 px-4 py-8 sm:px-6 lg:px-10">
+    <div className="space-y-6 px-4 py-8 sm:px-6 lg:px-10">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Heading level={1} size="display">

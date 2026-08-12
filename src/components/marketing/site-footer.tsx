@@ -10,7 +10,7 @@ export async function SiteFooter() {
 
   return (
     <footer className="border-t border-subtle bg-surface">
-      <div className="mx-auto flex max-w-content flex-col items-center gap-4 px-4 py-8 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-10">
+      <div className="flex flex-col items-center gap-4 px-4 py-8 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-10">
         <div className="space-y-1">
           <Wordmark size="sm" />
           <p className="text-xs text-muted">{t("tagline")}</p>

@@ -17,7 +17,7 @@ export default async function NewPagePage() {
   const t = await getTranslations("pages");
 
   return (
-    <div className="mx-auto max-w-form space-y-6 px-4 py-8 sm:px-6 lg:px-10">
+    <div className="space-y-6 px-4 py-8 sm:px-6 lg:px-10">
       <header>
         <Heading level={1} size="display">
           {t("createTitle")}

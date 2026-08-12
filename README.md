@@ -4,11 +4,17 @@ A multi-tenant donation platform for the Armenian market. Creators sign up,
 build donation pages, publish them at `/d/<slug>`, and embed them on their own
 sites via iframe.
 
-> **ArCa hosted checkout is integrated** (`ipay.arca.am`), but without
-> `ARCA_USERNAME` / `ARCA_PASSWORD` the Donate button stays disabled and no
-> live charges run. The 5% platform fee in `src/lib/fees.ts` is computed for
-> display (and stored on succeeded rows). See [AGENTS.md](./AGENTS.md) and
-> `src/lib/payments/arca.ts`.
+> **Two payment providers are integrated**, and the donor chooses between them:
+> **ArCa** (`ipay.arca.am`) for Armenian cards in AMD, and **Paddle Billing**
+> for international cards in USD. Each is independently optional — without its
+> keys that option is simply not offered, and with neither the Donate button
+> stays disabled and no live charges run. The 5% platform fee in
+> `src/lib/fees.ts` is computed for display and stored on succeeded rows. See
+> [AGENTS.md](./AGENTS.md), `src/lib/payments/arca.ts` and
+> `src/lib/payments/paddle.ts`.
+>
+> Paddle cannot settle AMD, so the international amounts come from a second
+> ladder the creator authors in page settings. Nothing here converts currency.
 
 Three things worth knowing before reading the code:
 
@@ -47,19 +53,43 @@ Three things worth knowing before reading the code:
 ## Running it
 
 ```bash
-pnpm install                 # also runs `prisma generate`
-cp .env.example .env         # then fill in AUTH_SECRET, see below
-docker compose up -d         # Postgres on 5442, PgBouncer on 6442
-pnpm db:deploy               # apply migrations
-pnpm db:seed                 # optional — sample data, see below
+pnpm install                 # this is the whole setup — see below
 pnpm dev                     # http://localhost:3000
 ```
 
-Generate a secret for `.env`:
+`pnpm install` runs [scripts/setup.mjs](./scripts/setup.mjs), so that nothing
+here is ever a manual checklist step. In order, it:
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
+1. runs **`prisma generate`** — the client is generated TypeScript source under
+   `src/generated/prisma` and gitignored, so every install has to rebuild it;
+2. creates **`.env`** from `.env.example` when it is missing, with a real
+   `AUTH_SECRET` generated into it (optional keys stay empty, by design);
+3. runs **`docker compose up -d`** and waits for Postgres to accept
+   connections — but only when the database URL points at this machine and
+   nothing is listening on it yet;
+4. runs **`prisma migrate deploy`**, so pulling a branch that adds a migration
+   applies it on install;
+5. runs **`prisma db seed`** only on a database with no migration history at
+   all — a first-ever local setup. Never on Vercel, CI or `NODE_ENV=production`.
+
+It is idempotent; re-run it any time with **`pnpm setup`**.
+
+An unreachable database is a warning, not a failed install, so `pnpm install`
+still works in CI, in an image build, or with Docker switched off. A database
+that _is_ reachable and then rejects the migrations fails the install on
+purpose: that is schema drift, and skipping it silently would leave the app
+running against a schema that does not match `prisma/migrations`.
+
+| Variable             | Effect                     |
+| -------------------- | -------------------------- |
+| `SETUP_SKIP=1`       | skip setup entirely        |
+| `SETUP_DOCKER=0`     | never start docker compose |
+| `SETUP_SEED=1` / `0` | force seeding on / off     |
+
+The same hook covers deployment: any host that runs `pnpm install` before the
+build command (Vercel does) applies the migrations there too, with no build
+command to change. Set **`DIRECT_URL`** in that environment as well — migrations
+cannot run through a transaction-mode pooler, and seeding will not touch it.
 
 The compose stack uses ports **5442** and **6442**, not the Postgres defaults,
 so it can run alongside other local databases. `DATABASE_URL` points at
@@ -80,22 +110,24 @@ points at Postgres (5442) and is used only by `prisma migrate`.
 | `/embed/[slug]` | Embeddable widget (no chrome, frame-ancestors open). |
 | `/dev/kitchen-sink` | Every UI component. Dev only. |
 
-Start at **`/`**, **`/login`**, or **`/dev/kitchen-sink`**. Seed the DB if you
-want the dashboard and analytics screens to show sample data.
+Start at **`/`**, **`/login`**, or **`/dev/kitchen-sink`**.
 
 ### Signing in
 
-`pnpm db:seed` creates two accounts, both with password `Password123!`:
+The seed — which your first `pnpm install` ran for you, and `pnpm db:seed` runs
+again — creates two accounts, both with password `Password123!`:
 
 - `demo@nvirir.test` — three Armenian campaigns in different states, plus 50
-  donations and 500 pageviews spread over 60 days, all in drams
+  donations and 500 pageviews spread over 60 days. Most are ArCa donations in
+  drams; roughly one in six is a Paddle donation in USD, so the mixed-currency
+  totals have something real to render
 - `second@nvirir.test` — a second owner, so ownership checks have something to
   fail against
 
-Seeding is optional. `pnpm db:deploy` alone gives you a working, empty app; the
-seed just means the dashboard and analytics screens have data to render instead
-of empty states. It only touches its own two `@nvirir.test` users, so
-re-running it is safe.
+The data is only there so the dashboard and analytics screens have something to
+render instead of empty states; an unseeded database is a perfectly working,
+empty app. Re-running is safe — the seed touches only its own two
+`@nvirir.test` users.
 
 ## Translations
 
@@ -161,6 +193,7 @@ in `src/lib/auth.ts` blocks it deliberately.
 ## Commands
 
 ```bash
+pnpm setup            # what `pnpm install` runs: generate, compose up, migrate
 pnpm dev              # dev server
 pnpm build            # production build (runs prisma generate first)
 pnpm start            # serve the production build
@@ -172,8 +205,8 @@ pnpm test             # unit tests — fast, no database
 pnpm test:db          # integration tests — needs the database running
 pnpm test:watch
 
-pnpm db:deploy        # apply existing migrations (use this to set up)
 pnpm db:migrate       # create a new migration after a schema change
+pnpm db:deploy        # apply existing migrations by hand — `pnpm setup` does it
 pnpm db:seed
 pnpm db:studio        # browse the data
 pnpm db:reset         # DESTRUCTIVE — drops, re-migrates, re-seeds
@@ -195,7 +228,7 @@ src/
     ui/              the shared library — see below
     auth/ brand/ dashboard/ donation/ marketing/
   i18n/              locale config, request config
-  lib/               auth, brand, currency, fees, payments/arca, email, …
+  lib/               auth, brand, currency, fees, payments/{arca,paddle}, email, …
   server/
     actions/         mutations (auth, pages, checkout, contact, …)
     queries/         RSC reads (pages, analytics, overview, …)

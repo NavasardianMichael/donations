@@ -4,12 +4,13 @@ import { VerifyEmailBanner } from "@/components/dashboard/verify-email-banner";
 import { requireUser } from "@/lib/auth-guards";
 
 /**
- * The authenticated shell.
+ * The authenticated shell: one viewport-tall flex row, sidebar then workspace.
  *
- * Sidebar pushes content from `md` up (`md:pl-sidebar`) rather than overlaying
- * it, per the design spec. Below that the sidebar is replaced by a top bar and
- * a fixed bottom tab bar, so the four primary destinations stay one thumb-tap
- * away — the bottom padding keeps content clear of it.
+ * Nothing here is positioned — the chrome holds its place because it is a flex
+ * sibling of the scroll container, not because it was lifted out of flow. The
+ * document itself never scrolls; the single scroll region is the workspace
+ * column, so the sidebar and the mobile bars cannot drift and no element needs
+ * padding to reserve space for another. See `docs/ui-conventions.md`.
  *
  * `requireUser()` here is convenience, not security: it gets the session for
  * the chrome. Every page and action re-checks independently.
@@ -28,17 +29,22 @@ export default async function DashboardLayout({
   };
 
   return (
-    <div className="min-h-dvh bg-canvas">
+    <div className="flex h-dvh overflow-hidden bg-canvas">
       <Sidebar user={chromeUser} />
-      <MobileTopBar user={chromeUser} />
 
-      <div className="md:pl-sidebar">
-        {user.emailVerified ? null : <VerifyEmailBanner email={user.email} />}
+      {/* `min-w-0` so a wide table inside scrolls instead of stretching the row. */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <MobileTopBar user={chromeUser} />
 
-        <main className="pb-24 md:pb-10">{children}</main>
+        {/* The app's only scroll region. */}
+        <div className="scrollbar-thin flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {user.emailVerified ? null : <VerifyEmailBanner email={user.email} />}
+
+          <main className="flex-1">{children}</main>
+        </div>
+
+        <MobileTabBar />
       </div>
-
-      <MobileTabBar />
     </div>
   );
 }

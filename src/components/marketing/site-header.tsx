@@ -23,7 +23,7 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-subtle bg-surface/95 backdrop-blur">
-      <div className="mx-auto flex h-topbar max-w-content items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
+      <div className="flex h-topbar items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
         <Wordmark size="md" />
 
         <nav aria-label={t("navFaq")} className="hidden sm:block">

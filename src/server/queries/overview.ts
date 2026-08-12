@@ -60,7 +60,9 @@ async function summaryForWindow(
         status: "SUCCEEDED",
         createdAt: { gte: from, lt: to },
       },
-      _sum: { amountMinor: true },
+      // Page-currency equivalents, so ArCa (AMD) and Paddle (USD) donations
+      // can be added together at all. See Donation.pageAmountMinor.
+      _sum: { pageAmountMinor: true },
       _count: { _all: true },
     }),
     prisma.pageView.count({
@@ -69,7 +71,7 @@ async function summaryForWindow(
   ]);
 
   const donationCount = donationAgg._count._all;
-  const raisedMinor = donationAgg._sum.amountMinor ?? 0;
+  const raisedMinor = donationAgg._sum.pageAmountMinor ?? 0;
 
   return {
     raisedMinor,

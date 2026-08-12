@@ -17,7 +17,7 @@ export function LegalPage({
   sections: LegalSection[];
 }) {
   return (
-    <div className="mx-auto max-w-form px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+    <div className="px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
       <header>
         <Heading level={1} size="display">
           {title}

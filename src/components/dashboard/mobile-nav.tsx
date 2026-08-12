@@ -24,10 +24,14 @@ import { isActive, NAV_ITEMS } from "./nav-items";
 
 /**
  * Mobile chrome, below `md`: a slim top bar with the wordmark and an overflow
- * sheet, plus the fixed bottom tab bar from `manage_pages_mobile_updated_nav`.
+ * sheet, plus the bottom tab bar from `manage_pages_mobile_updated_nav`.
  *
  * The four primary destinations live in the tab bar where thumbs can reach
  * them; everything secondary goes in the sheet.
+ *
+ * Both bars are in-flow flex children of the shell column, above and below its
+ * scroll region — they stay put without `fixed`/`sticky`, and so the content
+ * needs no padding to avoid them.
  */
 export function MobileTopBar({
   user,
@@ -39,7 +43,7 @@ export function MobileTopBar({
   const [signingOut, startSignOut] = useTransition();
 
   return (
-    <header className="sticky top-0 z-40 flex h-topbar items-center justify-between border-b border-subtle bg-surface px-4 md:hidden">
+    <header className="flex h-topbar shrink-0 items-center justify-between border-b border-subtle bg-surface px-4 md:hidden">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="ghost" size="icon-sm" aria-label={t("openMenu")}>
@@ -108,7 +112,7 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label={t("dashboard")}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-subtle bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="shrink-0 border-t border-subtle bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="grid grid-cols-4">
         {NAV_ITEMS.map((item) => {

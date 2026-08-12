@@ -216,8 +216,6 @@
   --spacing-sidebar: 17.5rem; /* 280px expanded */
   --spacing-sidebar-collapsed: 5rem; /* 80px icon-only */
   --spacing-topbar: 4rem;
-  --container-content: 75rem; /* 1200px fixed grid */
-  --container-form: 50rem; /* 800px single-column forms */
 
   /* Elevation — an ambient lift, not a drop shadow. */
   --shadow-lift: 0 1px 4px 0 rgb(0 0 0 / 0.04);
@@ -280,6 +278,19 @@
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+
+  /*
+   * Browsers give <button> the arrow cursor from their own stylesheet — no
+   * Tailwind rule and nothing in this app does it. Every button here is a
+   * pointer affordance, so restore it once, globally: native buttons, Radix
+   * triggers (which render as <button>) and [role="button"] are all covered
+   * without opting in. Disabled controls keep the arrow, and any
+   * `disabled:cursor-not-allowed` utility still wins on top of this.
+   */
+  button:not(:disabled, [aria-disabled="true"]),
+  [role="button"]:not(:disabled, [aria-disabled="true"]) {
+    cursor: pointer;
   }
 
   ::selection {

@@ -19,7 +19,7 @@ export default function PublicLayout({
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
       <header className="border-b border-subtle bg-surface">
-        <div className="mx-auto flex h-14 max-w-content items-center px-4 sm:px-6">
+        <div className="flex h-14 items-center px-4 sm:px-6">
           <Wordmark size="sm" />
         </div>
       </header>
@@ -27,7 +27,7 @@ export default function PublicLayout({
       <main className="flex-1">{children}</main>
 
       <footer className="border-t border-subtle bg-surface">
-        <div className="mx-auto max-w-content px-4 py-6 text-center text-xs text-muted sm:px-6">
+        <div className="px-4 py-6 text-center text-xs text-muted sm:px-6">
           {copyrightLine()}
         </div>
       </footer>

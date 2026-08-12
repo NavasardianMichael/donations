@@ -119,6 +119,19 @@ model DonationPage {
   allowCustomAmount Boolean @default(true)
   minAmountMinor    Int     @default(10000)
   goalAmountMinor   Int?
+
+  /// The INTERNATIONAL amount ladder, in USD cents, index-matched to
+  /// `suggestedAmounts`.
+  ///
+  /// Paddle cannot settle in AMD at all, so an international donation has to be
+  /// denominated in a currency Paddle supports. Rather than invent an exchange
+  /// rate — which would go stale silently and put the platform in the business
+  /// of guessing FX — the creator authors this ladder directly alongside the
+  /// AMD one. The two ladders together are the creator's own declared pricing.
+  suggestedAmountsUsd Int[] @default([500, 2500, 5000])
+  /// Minimum for an international donation, in USD cents. Separate from
+  /// `minAmountMinor` because 10000 luma (100 ֏) read as cents is $100.
+  minAmountMinorUsd   Int   @default(100)
   showProgressBar   Boolean @default(true)
   collectDonorName  Boolean @default(true)
   collectMessage    Boolean @default(false)
@@ -169,30 +182,50 @@ enum TrafficSource {
 }
 
 enum PaymentProvider {
+  /// ArCa (Armenian Card) hosted checkout. Armenian cards, AMD.
   ARCA
+  /// Paddle Billing overlay checkout. International cards, USD.
+  PADDLE
 }
 
 /// Donation records.
 ///
 /// A row is created BEFORE the donor is sent to the payment gateway, in
-/// PENDING, and its id is the `orderNumber` we register with ArCa. It only
-/// becomes SUCCEEDED after a server-to-server status query confirms it —
-/// never on the strength of the browser returning to our return URL.
+/// PENDING, and its id is the `orderNumber` we register with ArCa (and the
+/// `custom_data.donation_id` we attach to a Paddle transaction). It only
+/// becomes SUCCEEDED after a server-to-server confirmation — never on the
+/// strength of the browser returning to our return URL, and never on the
+/// strength of an unverified webhook body.
 model Donation {
-  id                String         @id @default(cuid())
-  pageId            String
+  id String @id @default(cuid())
+  pageId String
+
+  /// What the donor was actually CHARGED, with `currency`: USD cents for
+  /// Paddle, AMD luma for ArCa. This pair is the truth about the transaction
+  /// and is what receipts and donation history display.
   amountMinor       Int
   currency          String
+  /// The same donation expressed in the PAGE's currency, frozen at creation.
+  ///
+  /// Every aggregate (raised totals, progress bars, analytics rollups) sums
+  /// THIS column, never `amountMinor` — otherwise a page with both ArCa and
+  /// Paddle donations would add USD cents to AMD luma and report a number that
+  /// means nothing. Equal to `amountMinor` for a donation already in the page's
+  /// currency. Written once, so editing the amount ladders later never rewrites
+  /// history.
+  pageAmountMinor   Int
   platformFeeMinor  Int
   netToCreatorMinor Int?
   status            DonationStatus @default(PENDING)
 
   // --- Payment provider -----------------------------------------------
-  /// Which gateway handled this. Lets a second provider be added without a
-  /// backfill, and keeps historical rows honest about how they were paid.
+  /// Which gateway handled this. Always written explicitly — never left to the
+  /// default, which would silently mislabel a Paddle row as ArCa.
   provider          PaymentProvider @default(ARCA)
-  /// The gateway's own order id (ArCa: `orderId` from register.do).
-  providerOrderId   String?         @unique
+  /// The gateway's own id: ArCa's `orderId` from register.do, or Paddle's
+  /// `txn_…` transaction id. Unique PER PROVIDER — two gateways' id spaces are
+  /// unrelated, so a global unique would be asserting something untrue.
+  providerOrderId   String?
   /// Masked PAN and approval code, for receipts and support lookups.
   cardMask          String?
   approvalCode      String?
@@ -216,9 +249,13 @@ model Donation {
 
   page DonationPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
+  /// Backs webhook and return-leg idempotency: a replayed gateway callback
+  /// cannot create a second row for the same transaction.
+  @@unique([provider, providerOrderId])
   @@index([pageId, status, createdAt])
-  /// Drives the reconcile sweep for rows abandoned at the gateway.
-  @@index([status, registeredAt])
+  /// Drives the reconcile sweep for rows abandoned at the gateway. Swept
+  /// per-provider, so the provider column leads.
+  @@index([provider, status, registeredAt])
 }
 
 // ---------------------------------------------------------------------------
