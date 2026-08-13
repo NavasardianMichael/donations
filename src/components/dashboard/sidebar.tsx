@@ -35,7 +35,7 @@ export function Sidebar({
   const [signingOut, startSignOut] = useTransition();
 
   return (
-    <aside className="hidden w-sidebar shrink-0 flex-col border-r border-subtle bg-canvas-inset md:flex">
+    <aside className="hidden w-sidebar min-h-0 shrink-0 flex-col border-r border-subtle bg-canvas-inset md:flex">
       {/* Identity */}
       <div className="flex shrink-0 items-center gap-3 border-b border-subtle px-5 py-5">
         <Avatar size="md" name={user.name} src={user.image} />

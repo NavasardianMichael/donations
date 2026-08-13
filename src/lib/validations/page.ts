@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { parseOrigin } from "@/lib/embed-origins";
 import {
   ABSOLUTE_MIN_AMOUNT_MINOR,
   MAX_AMOUNT_MINOR,
@@ -136,10 +137,26 @@ export const updatePageSeoSchema = (t: MessageResolver) =>
     noIndex: z.boolean(),
   });
 
-export const updatePageEmbedSchema = z.object({
-  id: z.string().min(1),
-  embedEnabled: z.boolean(),
-});
+export const updatePageEmbedSchema = (t: MessageResolver) =>
+  z.object({
+    id: z.string().min(1),
+    embedEnabled: z.boolean(),
+    embedAllowAnyOrigin: z.boolean(),
+    embedAllowedOrigins: z
+      .array(z.string())
+      .max(25, t("page.originsMax"))
+      .superRefine((origins, ctx) => {
+        for (let i = 0; i < origins.length; i++) {
+          if (!parseOrigin(origins[i] ?? "")) {
+            ctx.addIssue({
+              code: "custom",
+              message: t("url.invalid"),
+              path: [i],
+            });
+          }
+        }
+      }),
+  });
 
 export const pageIdSchema = z.object({ id: z.string().min(1) });
 
@@ -155,4 +172,6 @@ export type UpdatePageInput = z.infer<ReturnType<typeof updatePageSchema>>;
 export type UpdatePageSeoInput = z.infer<
   ReturnType<typeof updatePageSeoSchema>
 >;
-export type UpdatePageEmbedInput = z.infer<typeof updatePageEmbedSchema>;
+export type UpdatePageEmbedInput = z.infer<
+  ReturnType<typeof updatePageEmbedSchema>
+>;

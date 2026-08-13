@@ -17,7 +17,7 @@ import { requireUser } from "@/lib/auth-guards";
 import { absoluteUrl } from "@/lib/env";
 import { getOwnedPage } from "@/server/queries/pages";
 
-import { EmbedToggle } from "./embed-toggle";
+import { EmbedSettings } from "./embed-settings";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("pageSettings.embedTab");
@@ -65,7 +65,12 @@ ${listenerScript()}`;
         </CardHeader>
         <CardContent className="space-y-4 py-5">
           <p className="text-sm text-muted">{t("subtitle")}</p>
-          <EmbedToggle pageId={page.id} embedEnabled={page.embedEnabled} />
+          <EmbedSettings
+            pageId={page.id}
+            embedEnabled={page.embedEnabled}
+            embedAllowAnyOrigin={page.embedAllowAnyOrigin}
+            embedAllowedOrigins={page.embedAllowedOrigins}
+          />
         </CardContent>
       </Card>
 
@@ -92,8 +97,8 @@ ${listenerScript()}`;
             <CardContent className="flex justify-center bg-surface-sunken py-6">
               <iframe
                 src={embedUrl}
-                width="380"
-                height="480"
+                width="100%"
+                height="498"
                 style={{ border: 0, maxWidth: "100%" }}
                 loading="lazy"
                 title={page.title}

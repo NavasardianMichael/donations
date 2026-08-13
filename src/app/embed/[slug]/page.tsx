@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
@@ -12,6 +13,8 @@ import { isPaddleConfigured } from "@/lib/payments/paddle";
 import { getPublicPageBySlug, listPublishedSlugs } from "@/server/queries/public-pages";
 
 export const revalidate = 3600;
+
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const slugs = await listPublishedSlugs();
@@ -39,7 +42,10 @@ export default async function EmbedDonationPage(props: {
   // Distinct from a plain 404: the creator can turn embedding off for a page
   // that is otherwise live at /d/[slug]. Either way there is nothing to
   // render inside the iframe.
-  if (!page || !page.embedEnabled) notFound();
+  if (!page || !page.embedEnabled) {
+    await connection();
+    notFound();
+  }
 
   const t = await getTranslations("donation");
 

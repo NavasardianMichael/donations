@@ -29,11 +29,12 @@ export default async function DashboardLayout({
   };
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-canvas">
+    <div data-shell="app" className="flex h-dvh overflow-hidden bg-canvas">
       <Sidebar user={chromeUser} />
 
-      {/* `min-w-0` so a wide table inside scrolls instead of stretching the row. */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* `min-h-0 min-w-0` so the column shrinks on both axes; overflow stays
+          in the scroll region below instead of growing the document. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <MobileTopBar user={chromeUser} />
 
         {/* The app's only scroll region. */}

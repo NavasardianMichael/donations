@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
@@ -17,6 +18,9 @@ import {
 
 /** ISR fallback. Real freshness comes from `revalidatePath` after mutations. */
 export const revalidate = 3600;
+
+/** Slugs published after the last build must still render, not 404. */
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const slugs = await listPublishedSlugs();
@@ -40,7 +44,12 @@ export async function generateMetadata(props: {
     description,
     alternates: { canonical: `/d/${page.slug}` },
     robots: page.noIndex ? { index: false, follow: false } : undefined,
-    keywords: page.seoKeywords || undefined,
+    keywords: page.seoKeywords
+      ? page.seoKeywords
+          .split(",")
+          .map((keyword) => keyword.trim())
+          .filter(Boolean)
+      : undefined,
     openGraph: {
       title,
       description,
@@ -66,7 +75,12 @@ export default async function DonationPage(props: {
 }) {
   const { slug } = await props.params;
   const page = await getPublicPageBySlug(slug);
-  if (!page) notFound();
+  if (!page) {
+    // A static 404 here would stick for `revalidate` seconds after the
+    // creator publishes. Opt this miss into a dynamic render instead.
+    await connection();
+    notFound();
+  }
 
   const t = await getTranslations("donation");
   const supporters = page.collectDonorName

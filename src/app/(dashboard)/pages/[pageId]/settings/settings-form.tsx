@@ -17,6 +17,7 @@ import {
   Heading,
   Input,
   Switch,
+  TagInput,
   Text,
   Textarea,
   toast,
@@ -80,7 +81,13 @@ export function PageSettingsForm({
 
   const seoTitle = useWatch({ control, name: "seoTitle" }) ?? "";
   const seoDescription = useWatch({ control, name: "seoDescription" }) ?? "";
+  const seoKeywords = useWatch({ control, name: "seoKeywords" }) ?? "";
   const noIndex = useWatch({ control, name: "noIndex" });
+
+  const keywordTags = seoKeywords
+    .split(",")
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
 
   function onSubmit(values: UpdatePageSeoInput) {
     setFormError(null);
@@ -187,10 +194,21 @@ export function PageSettingsForm({
               />
             </Field>
 
-            <Field label={t("keywords")} error={errors.seoKeywords?.message}>
-              <Input
+            <Field
+              label={t("keywords")}
+              description={t("keywordsHint")}
+              error={errors.seoKeywords?.message}
+            >
+              <TagInput
+                value={keywordTags}
                 placeholder={t("keywordsPlaceholder")}
-                {...register("seoKeywords")}
+                removeLabel={(tag) => t("removeKeyword", { tag })}
+                onChange={(tags) =>
+                  setValue("seoKeywords", tags.join(", "), {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
               />
             </Field>
 

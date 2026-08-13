@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 
 import { requireUserOrThrow } from "@/lib/auth-guards";
+import { parseOrigin } from "@/lib/embed-origins";
 import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit, retryAfterSeconds } from "@/lib/rate-limit";
 import { slugify } from "@/lib/utils";
@@ -45,8 +46,8 @@ import {
 function revalidatePage(slug: string) {
   revalidatePath("/pages");
   revalidatePath("/dashboard");
-  revalidatePath(`/d/${slug}`);
-  revalidatePath(`/embed/${slug}`);
+  revalidatePath(`/d/${slug}`, "page");
+  revalidatePath(`/embed/${slug}`, "page");
 }
 
 // ---------------------------------------------------------------------------
@@ -201,14 +202,27 @@ export async function updatePageSeoAction(
 
 export async function updatePageEmbedAction(
   input: unknown,
-): Promise<ActionResult<{ embedEnabled: boolean }>> {
+): Promise<
+  ActionResult<{
+    embedEnabled: boolean;
+    embedAllowAnyOrigin: boolean;
+    embedAllowedOrigins: string[];
+  }>
+> {
   const user = await requireUserOrThrow();
   const tv = await getTranslations("validation");
 
-  const parsed = updatePageEmbedSchema.safeParse(input);
+  const parsed = updatePageEmbedSchema(resolver(tv)).safeParse(input);
   if (!parsed.success) return fail(tv("checkFields"));
 
-  const { id, embedEnabled } = parsed.data;
+  const { id, embedEnabled, embedAllowAnyOrigin } = parsed.data;
+  const embedAllowedOrigins = [
+    ...new Set(
+      parsed.data.embedAllowedOrigins
+        .map(parseOrigin)
+        .filter((origin): origin is string => origin !== null),
+    ),
+  ];
 
   const page = await prisma.donationPage.findFirst({
     where: { id, userId: user.id, deletedAt: null },
@@ -218,11 +232,11 @@ export async function updatePageEmbedAction(
 
   await prisma.donationPage.updateMany({
     where: { id, userId: user.id, deletedAt: null },
-    data: { embedEnabled },
+    data: { embedEnabled, embedAllowAnyOrigin, embedAllowedOrigins },
   });
 
   revalidatePage(page.slug);
-  return ok({ embedEnabled });
+  return ok({ embedEnabled, embedAllowAnyOrigin, embedAllowedOrigins });
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +344,8 @@ export async function duplicatePageAction(
       ogImageUrl: source.ogImageUrl,
       noIndex: source.noIndex,
       embedEnabled: source.embedEnabled,
+      embedAllowAnyOrigin: source.embedAllowAnyOrigin,
+      embedAllowedOrigins: source.embedAllowedOrigins,
       theme: source.theme ?? undefined,
     },
     select: { id: true, slug: true },

@@ -2,6 +2,7 @@ import { Eye, Globe, HandCoins } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { PageActions } from "@/components/dashboard/page-actions";
+import { PagePublicUrl } from "@/components/dashboard/page-public-url";
 import {
   Card,
   CardContent,
@@ -32,7 +33,7 @@ export async function PageCard({ page }: { page: PageListItem }) {
   const t = await getTranslations("page");
   const tp = await getTranslations("pages");
 
-  const publicUrl = absoluteUrl(`/d/${page.slug}`).replace(/^https?:\/\//, "");
+  const publicUrl = absoluteUrl(`/d/${page.slug}`);
 
   return (
     <Card tone="warm" interactive className="flex flex-col">
@@ -55,7 +56,7 @@ export async function PageCard({ page }: { page: PageListItem }) {
               </StatusDot>
             </div>
 
-            <p className="mt-1 truncate text-sm text-muted">{publicUrl}</p>
+            <PagePublicUrl url={publicUrl} title={page.title} />
 
             <dl className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
               <div className="flex items-center gap-1.5">

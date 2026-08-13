@@ -144,6 +144,12 @@ model DonationPage {
   noIndex        Boolean @default(false)
 
   embedEnabled Boolean @default(true)
+  /// When true, `/embed/[slug]` may be framed by any origin (`frame-ancestors *`).
+  /// When false, only `embedAllowedOrigins` (plus this app, for the dashboard
+  /// preview) may frame it.
+  embedAllowAnyOrigin Boolean @default(true)
+  /// Origins like `https://news.am`. Ignored while `embedAllowAnyOrigin` is true.
+  embedAllowedOrigins String[] @default([])
   theme        Json? // accent color, radius, layout variant
 
   publishedAt DateTime?

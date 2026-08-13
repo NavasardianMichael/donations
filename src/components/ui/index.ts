@@ -36,6 +36,7 @@ export * from "./stat";
 export * from "./switch";
 export * from "./table";
 export * from "./tabs";
+export * from "./tag-input";
 export * from "./toast";
 export * from "./tooltip";
 export * from "./typography";

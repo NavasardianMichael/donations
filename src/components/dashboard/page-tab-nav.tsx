@@ -40,7 +40,7 @@ export function PageTabNav({
         {title}
       </Heading>
       <nav aria-label={t("editor")}>
-        <ul className="scrollbar-thin flex items-center gap-1 overflow-x-auto border-b border-subtle">
+        <ul className="flex flex-wrap items-end gap-x-1 border-b border-subtle">
           {tabs.map((tab) => {
             const active = pathname === tab.href;
             return (
@@ -49,7 +49,7 @@ export function PageTabNav({
                   href={tab.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "-mb-px inline-flex items-center border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+                    "inline-flex items-center border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                     active
                       ? "border-accent font-semibold text-fg"

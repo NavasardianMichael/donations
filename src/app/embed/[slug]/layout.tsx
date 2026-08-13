@@ -8,8 +8,8 @@
  * iframe navigation), never a client-side transition from elsewhere in this
  * app — so it can never leak onto an unrelated page.
  *
- * Frame permission itself is granted in `next.config.ts` (`frame-ancestors`),
- * scoped to exactly this path — never as a global header.
+ * Frame permission is granted per page via CSP `frame-ancestors`, set in
+ * `proxy.ts` from the creator's allowlist — never as a global header.
  */
 export default function EmbedLayout({
   children,

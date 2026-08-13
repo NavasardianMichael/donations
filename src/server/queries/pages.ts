@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
+import type { DonationPage } from "@/generated/prisma/client";
 import type { PageStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 
@@ -121,7 +122,7 @@ export const countPagesByStatus = cache(async function countPagesByStatus(
 export const getOwnedPage = cache(async function getOwnedPage(
   userId: string,
   pageId: string,
-) {
+): Promise<DonationPage | null> {
   return prisma.donationPage.findFirst({
     where: { id: pageId, userId, deletedAt: null },
   });

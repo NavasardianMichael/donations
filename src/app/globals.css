@@ -274,6 +274,19 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /*
+   * The dashboard shell is viewport-tall and owns its own scroll region.
+   * Lock the document while it is mounted so the browser scrollbar does not
+   * sit beside the workspace one. Marketing / auth / embed still scroll the
+   * document as usual — they do not render `[data-shell=app]`.
+   */
+  html:has([data-shell="app"]),
+  html:has([data-shell="app"]) body {
+    overflow: hidden;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
   /* Keyboard focus is visible everywhere. Pointer focus is not. */
   :focus-visible {
     outline: 2px solid var(--ring);

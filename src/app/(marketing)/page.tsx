@@ -141,7 +141,7 @@ export default async function LandingPage() {
               asChild
               size="lg"
               variant="outline"
-              className="border-accent-fg/40 text-accent-fg hover:bg-accent-fg/10"
+              className="border-accent-fg/40 bg-transparent text-accent-fg shadow-none hover:bg-accent-fg/10 hover:text-accent-fg hover:shadow-none"
             >
               <Link href="/login">{tm("logIn")}</Link>
             </Button>
