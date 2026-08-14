@@ -15,7 +15,8 @@ import {
 import { BRAND } from "@/lib/brand";
 import { requireUser } from "@/lib/auth-guards";
 import { absoluteUrl } from "@/lib/env";
-import { getOwnedPage } from "@/server/queries/pages";
+import { escapeHtml } from "@/lib/utils";
+import { getOwnedEmbedSettings } from "@/server/queries/pages";
 
 import { EmbedSettings } from "./embed-settings";
 
@@ -29,8 +30,14 @@ function listenerScript(): string {
   return `<script>
 window.addEventListener("message", function (event) {
   if (!event.data || event.data.type !== "donation-embed-height") return;
+  if (typeof event.data.height !== "number" || !isFinite(event.data.height)) return;
+  var height = Math.max(0, Math.min(Math.round(event.data.height), 8000));
   var frames = document.querySelectorAll('iframe[data-${BRAND.cssPrefix}-embed]');
-  for (var i = 0; i < frames.length; i++) frames[i].style.height = event.data.height + "px";
+  for (var i = 0; i < frames.length; i++) {
+    if (frames[i].contentWindow === event.source) {
+      frames[i].style.height = height + "px";
+    }
+  }
 });
 </script>`;
 }
@@ -42,7 +49,7 @@ export default async function PageEmbedPage(props: {
   const user = await requireUser();
   const t = await getTranslations("pageSettings.embedTab");
 
-  const page = await getOwnedPage(user.id, pageId);
+  const page = await getOwnedEmbedSettings(user.id, pageId);
   if (!page) notFound();
 
   const embedUrl = absoluteUrl(`/embed/${page.slug}`);
@@ -53,7 +60,7 @@ export default async function PageEmbedPage(props: {
   height="480"
   style="border:0;max-width:420px;"
   loading="lazy"
-  title="${page.title}"
+  title="${escapeHtml(page.title)}"
 ></iframe>
 ${listenerScript()}`;
 

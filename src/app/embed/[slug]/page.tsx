@@ -1,4 +1,3 @@
-import { getTranslations } from "next-intl/server";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 
@@ -8,8 +7,6 @@ import { DonationForm } from "@/components/donation/donation-form";
 import { EmbedHeightReporter } from "@/components/donation/embed-height-reporter";
 import { TrackBeacon } from "@/components/donation/track-beacon";
 import { Avatar, Heading, ProgressBar, Text } from "@/components/ui";
-import { isArcaConfigured } from "@/lib/payments/arca";
-import { isPaddleConfigured } from "@/lib/payments/paddle";
 import { getPublicPageBySlug, listPublishedSlugs } from "@/server/queries/public-pages";
 
 export const revalidate = 3600;
@@ -47,8 +44,6 @@ export default async function EmbedDonationPage(props: {
     notFound();
   }
 
-  const t = await getTranslations("donation");
-
   return (
     <div className="mx-auto max-w-sm">
       <EmbedHeightReporter />
@@ -65,13 +60,14 @@ export default async function EmbedDonationPage(props: {
           <Heading level={2} size="sm" className="truncate">
             {page.title}
           </Heading>
-          {page.user.name ? (
-            <Text size="xs" variant="muted" className="truncate">
-              {t("supportTitle", { name: page.user.name })}
-            </Text>
-          ) : null}
         </div>
       </div>
+
+      {page.description ? (
+        <Text size="sm" variant="muted" className="mt-3">
+          {page.description}
+        </Text>
+      ) : null}
 
       {page.showProgressBar && page.goalAmountMinor ? (
         <ProgressBar
@@ -90,15 +86,13 @@ export default async function EmbedDonationPage(props: {
           currency={page.currency}
           suggestedAmounts={page.suggestedAmounts}
           minAmountMinor={page.minAmountMinor}
+          maxAmountMinor={page.maxAmountMinor}
           suggestedAmountsUsd={page.suggestedAmountsUsd}
           minAmountMinorUsd={page.minAmountMinorUsd}
+          maxAmountMinorUsd={page.maxAmountMinorUsd}
           allowCustomAmount={page.allowCustomAmount}
           collectDonorName={page.collectDonorName}
           collectMessage={page.collectMessage}
-          providers={{
-            arca: isArcaConfigured(),
-            paddle: isPaddleConfigured(),
-          }}
           source="EMBED"
         />
       </div>

@@ -1,4 +1,5 @@
 import { BRAND } from "@/lib/brand";
+import { escapeHtml } from "@/lib/utils";
 import type { MessageResolver } from "@/lib/validations/resolver";
 
 /**
@@ -77,13 +78,13 @@ function layout(options: {
             cta
               ? `<tr>
             <td style="padding:24px 32px 0;">
-              <a href="${cta.url}" style="display:inline-block;background:${ACCENT};color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:4px;">${escapeHtml(cta.label)}</a>
+              <a href="${escapeHtml(cta.url)}" style="display:inline-block;background:${ACCENT};color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:4px;">${escapeHtml(cta.label)}</a>
             </td>
           </tr>
           <tr>
             <td style="padding:16px 32px 0;font-size:12px;line-height:20px;color:${MUTED};word-break:break-all;">
               ${escapeHtml(orPasteLabel)}<br>
-              <span style="color:#b02f00;">${cta.url}</span>
+              <span style="color:#b02f00;">${escapeHtml(cta.url)}</span>
             </td>
           </tr>`
               : ""
@@ -102,14 +103,6 @@ function layout(options: {
   </table>
 </body>
 </html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 export interface EmailContent {

@@ -3,8 +3,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import {
+  useMemo,
+  useState,
+  useTransition,
+  useCallback,
+  type SubmitEventHandler,
+} from "react";
+import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 
 import { GoogleButton } from "@/components/auth/google-button";
 import {
@@ -95,25 +101,35 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
   // each render, which the React Compiler cannot memoize safely.
   const password = useWatch({ control, name: "password" }) ?? "";
 
-  function onSubmit(values: SignUpInput) {
-    setFormError(null);
+  const onSubmit: SubmitHandler<SignUpInput> = useCallback(
+    (values) => {
+      setFormError(null);
 
-    startTransition(async () => {
-      const result = await signUpAction(values);
+      startTransition(async () => {
+        const result = await signUpAction(values);
 
-      if (!result.ok) {
-        if (result.fieldErrors) {
-          for (const [name, message] of Object.entries(result.fieldErrors)) {
-            setError(name as keyof SignUpInput, { message });
+        if (!result.ok) {
+          if (result.fieldErrors) {
+            for (const [name, message] of Object.entries(result.fieldErrors)) {
+              setError(name as keyof SignUpInput, { message });
+            }
           }
+          setFormError(result.message);
+          return;
         }
-        setFormError(result.message);
-        return;
-      }
 
-      setSentTo(result.data.email);
-    });
-  }
+        setSentTo(result.data.email);
+      });
+    },
+    [setError],
+  );
+
+  const onFormSubmit: SubmitEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      void handleSubmit(onSubmit)(event);
+    },
+    [handleSubmit, onSubmit],
+  );
 
   /**
    * Success is deliberately identical whether or not the address was already
@@ -150,7 +166,7 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
 
       <SeparatorWithLabel>{tCommon("or")}</SeparatorWithLabel>
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+      <form onSubmit={onFormSubmit} noValidate className="space-y-4">
         {formError ? (
           <Alert variant="danger" icon={false}>
             {formError}
@@ -175,6 +191,7 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
         <Field label={t("fields.name")} error={errors.name?.message} required>
           <Input
             autoComplete="name"
+            maxLength={80}
             placeholder={t("fields.namePlaceholder")}
             {...register("name")}
           />
@@ -184,6 +201,7 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
           <Input
             type="email"
             autoComplete="email"
+            maxLength={254}
             placeholder={t("fields.emailPlaceholder")}
             {...register("email")}
           />
@@ -199,6 +217,7 @@ export function SignUpForm({ callbackUrl }: { callbackUrl?: string }) {
             <Input
               type="password"
               autoComplete="new-password"
+              maxLength={200}
               placeholder="••••••••••"
               {...register("password")}
             />

@@ -19,6 +19,8 @@ describe("parseOrigin", () => {
     expect(parseOrigin("")).toBeNull();
     expect(parseOrigin("not a host")).toBeNull();
     expect(parseOrigin("ftp://files.am")).toBeNull();
+    expect(parseOrigin("javascript:alert(1)")).toBeNull();
+    expect(parseOrigin("https://user:pass@news.am")).toBeNull();
   });
 });
 

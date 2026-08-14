@@ -25,7 +25,12 @@ export default async function PageLayout({
 
   return (
     <div className="px-4 pt-6 sm:px-6 lg:px-10">
-      <PageTabNav pageId={page.id} title={page.title} />
+      <PageTabNav
+        pageId={page.id}
+        title={page.title}
+        status={page.status}
+        slug={page.slug}
+      />
       <div className="pb-8">{children}</div>
     </div>
   );

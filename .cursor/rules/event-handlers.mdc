@@ -1,0 +1,45 @@
+---
+description: Typed, memoized event handlers — no inline JSX callbacks
+globs: "**/*.{tsx,jsx}"
+alwaysApply: true
+---
+
+# Event handlers
+
+Do not pass inline functions to interactive props (`onChange`, `onClick`,
+`onSubmit`, `onCheckedChange`, `onValueChange`, `onKeyDown`, `onBlur`, …).
+
+Declare a named handler, annotate it with the callback type the component
+expects, and wrap it in `useCallback`.
+
+```tsx
+import {
+  useCallback,
+  type ChangeEventHandler,
+  type MouseEventHandler,
+} from "react";
+
+const onTitleChange: ChangeEventHandler<HTMLInputElement, HTMLInputElement> =
+  useCallback((event) => {
+    setTitle(event.target.value);
+  }, []);
+
+<Input value={title} onChange={onTitleChange} />
+```
+
+Take the type from the library that declares the prop:
+
+- `Input` `onChange` → `ChangeEventHandler<HTMLInputElement, HTMLInputElement>`
+- `Textarea` `onChange` → `ChangeEventHandler<HTMLTextAreaElement, HTMLTextAreaElement>`
+- `Button` `onClick` → `MouseEventHandler<HTMLButtonElement>`
+- `<form>` `onSubmit` → `SubmitEventHandler<HTMLFormElement>` (not deprecated `FormEventHandler`)
+- Custom UI → `TagInputProps["onChange"]`, `AmountSelectorProps["onChange"]`
+- Radix wrappers → `NonNullable<React.ComponentProps<typeof Switch>["onCheckedChange"]>`
+- react-hook-form submit → `SubmitHandler<Values>`, then a `SubmitEventHandler` that calls `handleSubmit(onSubmit)`
+
+Pass a `useState` setter directly when the signatures already match
+(`onCheckedChange={setMinEnabled}`). Do not wrap that.
+
+Leave arrows in `useEffect`, `useMemo`, `startTransition`, render `.map()`,
+and `t.rich()` tags. For handlers inside a list, extract a child component or
+delegate with `data-*` and `event.currentTarget`.

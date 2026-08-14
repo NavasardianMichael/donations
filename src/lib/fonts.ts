@@ -43,3 +43,47 @@ export const grapalat = localFont({
   fallback: ["Georgia", "Cambria", "Times New Roman", "serif"],
   preload: true,
 });
+
+/**
+ * Davel Aghvor — kept on disk, not applied. One cut only.
+ */
+export const davelAghvor = localFont({
+  src: [
+    {
+      path: "../fonts/davel-aghvor.otf",
+      weight: "100 900",
+      style: "normal",
+    },
+  ],
+  variable: "--font-davel-aghvor",
+  display: "swap",
+  fallback: ["Georgia", "Cambria", "Times New Roman", "serif"],
+  preload: false,
+});
+
+/**
+ * Mardoto — the face in use. Earlier families stay declared so they can be
+ * switched back without restoring files.
+ *
+ * `font-semibold` (600) snaps to Bold rather than a synthesised weight.
+ */
+export const mardoto = localFont({
+  src: [
+    { path: "../fonts/mardoto-thin.ttf", weight: "100 200", style: "normal" },
+    { path: "../fonts/mardoto-light.ttf", weight: "300", style: "normal" },
+    { path: "../fonts/mardoto-regular.ttf", weight: "400", style: "normal" },
+    { path: "../fonts/mardoto-medium.ttf", weight: "500", style: "normal" },
+    { path: "../fonts/mardoto-bold.ttf", weight: "600 700", style: "normal" },
+    { path: "../fonts/mardoto-black.ttf", weight: "800 900", style: "normal" },
+    { path: "../fonts/mardoto-thinitalic.ttf", weight: "100 200", style: "italic" },
+    { path: "../fonts/mardoto-lightitalic.ttf", weight: "300", style: "italic" },
+    { path: "../fonts/mardoto-italic.ttf", weight: "400", style: "italic" },
+    { path: "../fonts/mardoto-mediumitalic.ttf", weight: "500", style: "italic" },
+    { path: "../fonts/mardoto-bolditalic.ttf", weight: "600 700", style: "italic" },
+    { path: "../fonts/mardoto-blackitalic.ttf", weight: "800 900", style: "italic" },
+  ],
+  variable: "--font-mardoto",
+  display: "swap",
+  fallback: ["system-ui", "Segoe UI", "sans-serif"],
+  preload: true,
+});

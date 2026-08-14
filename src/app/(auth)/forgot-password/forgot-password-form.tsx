@@ -3,8 +3,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MailCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import {
+  useMemo,
+  useState,
+  useTransition,
+  useCallback,
+  type SubmitEventHandler,
+} from "react";
+import { useForm, type SubmitHandler } from "react-hook-form";
 
 import { Alert, Button, Field, Heading, Input, Text } from "@/components/ui";
 import { resolver } from "@/lib/validations/resolver";
@@ -37,7 +43,7 @@ export function ForgotPasswordForm() {
     defaultValues: { email: "" },
   });
 
-  function onSubmit(values: ForgotPasswordInput) {
+  const onSubmit: SubmitHandler<ForgotPasswordInput> = useCallback((values) => {
     setFormError(null);
 
     startTransition(async () => {
@@ -48,7 +54,14 @@ export function ForgotPasswordForm() {
       }
       setSent(true);
     });
-  }
+  }, []);
+
+  const onFormSubmit: SubmitEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      void handleSubmit(onSubmit)(event);
+    },
+    [handleSubmit, onSubmit],
+  );
 
   // Same confirmation regardless of whether the address exists.
   if (sent) {
@@ -72,7 +85,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+    <form onSubmit={onFormSubmit} noValidate className="space-y-4">
       {formError ? (
         <Alert variant="danger" icon={false}>
           {formError}
@@ -87,6 +100,7 @@ export function ForgotPasswordForm() {
         <Input
           type="email"
           autoComplete="email"
+          maxLength={254}
           placeholder={t("fields.emailPlaceholder")}
           {...register("email")}
         />

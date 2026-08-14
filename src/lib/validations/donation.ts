@@ -41,12 +41,17 @@ export const checkoutSchema = (
       .int(t("amount.whole"))
       .min(bounds.minMinor, t("amount.tooSmall", { min: formattedMinimum }))
       .max(bounds.maxMinor, t("amount.tooLarge")),
-    donorName: z.string().trim().max(80).optional().or(z.literal("")),
+    donorName: z
+      .string()
+      .trim()
+      .max(80, t("name.tooLong"))
+      .optional()
+      .or(z.literal("")),
     donorEmail: z
       .string()
       .trim()
       .toLowerCase()
-      .max(254)
+      .max(254, t("email.tooLong"))
       .email(t("email.invalid"))
       .optional()
       .or(z.literal("")),
@@ -100,8 +105,13 @@ export const contactSchema = (t: MessageResolver) =>
       .toLowerCase()
       .min(1, t("email.required"))
       .email(t("email.invalid"))
-      .max(254),
-    subject: z.string().trim().max(120).optional().or(z.literal("")),
+      .max(254, t("email.tooLong")),
+    subject: z
+      .string()
+      .trim()
+      .max(120, t("subject.tooLong"))
+      .optional()
+      .or(z.literal("")),
     message: z
       .string()
       .trim()

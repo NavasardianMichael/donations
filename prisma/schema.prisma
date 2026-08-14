@@ -117,7 +117,10 @@ model DonationPage {
   currency          String  @default("amd")
   suggestedAmounts  Int[]   @default([100000, 500000, 1000000])
   allowCustomAmount Boolean @default(true)
-  minAmountMinor    Int     @default(10000)
+  /// Null means no page-level floor — checkout still enforces `amountBounds`.
+  minAmountMinor    Int?
+  /// Null means no page-level ceiling — checkout still enforces `amountBounds`.
+  maxAmountMinor    Int?
   goalAmountMinor   Int?
 
   /// The INTERNATIONAL amount ladder, in USD cents, index-matched to
@@ -129,9 +132,10 @@ model DonationPage {
   /// of guessing FX — the creator authors this ladder directly alongside the
   /// AMD one. The two ladders together are the creator's own declared pricing.
   suggestedAmountsUsd Int[] @default([500, 2500, 5000])
-  /// Minimum for an international donation, in USD cents. Separate from
+  /// Optional international floor, in USD cents. Separate from
   /// `minAmountMinor` because 10000 luma (100 ֏) read as cents is $100.
-  minAmountMinorUsd   Int   @default(100)
+  minAmountMinorUsd   Int?
+  maxAmountMinorUsd   Int?
   showProgressBar   Boolean @default(true)
   collectDonorName  Boolean @default(true)
   collectMessage    Boolean @default(false)

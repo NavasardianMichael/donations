@@ -3,7 +3,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { Avatar as AvatarPrimitive } from "radix-ui";
 
-import { cn, initials } from "@/lib/utils";
+import { cn, initials, isSafeHttpUrl } from "@/lib/utils";
 
 const avatarVariants = cva(
   "relative flex shrink-0 overflow-hidden bg-surface-sunken",
@@ -43,20 +43,22 @@ export function Avatar({
   alt,
   ...props
 }: AvatarProps) {
+  const safeSrc = src && isSafeHttpUrl(src) ? src : undefined;
+
   return (
     <AvatarPrimitive.Root
       className={cn(avatarVariants({ size, shape }), className)}
       {...props}
     >
-      {src ? (
+      {safeSrc ? (
         <AvatarPrimitive.Image
-          src={src}
+          src={safeSrc}
           alt={alt ?? name ?? ""}
           className="aspect-square size-full object-cover"
         />
       ) : null}
       <AvatarPrimitive.Fallback
-        delayMs={src ? 400 : 0}
+        delayMs={safeSrc ? 400 : 0}
         className="flex size-full items-center justify-center bg-accent-subtle font-semibold text-brand"
       >
         {initials(name)}

@@ -190,3 +190,30 @@ export function addDays(date: Date, days: number): Date {
   next.setUTCDate(next.getUTCDate() + days);
   return next;
 }
+
+/**
+ * True only for http(s) URLs. Blocks `javascript:`, `data:`, credentials,
+ * whitespace tricks, and anything `z.string().url()` would otherwise accept
+ * into an `<img src>`.
+ */
+export function isSafeHttpUrl(value: string): boolean {
+  if (!value || value !== value.trim() || /[\s\\]/.test(value)) return false;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+    if (url.username || url.password) return false;
+    if (!url.hostname) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Attribute-safe HTML escape for generated snippets (not React children). */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

@@ -1,9 +1,10 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useCallback, useState, type MouseEventHandler } from "react";
 
 import { Button } from "@/components/ui";
+import { safeRedirect } from "@/lib/safe-redirect";
 
 /** Google's brand mark. Must keep its official colours — do not tokenise. */
 function GoogleIcon() {
@@ -38,6 +39,12 @@ export function GoogleButton({
 }) {
   const [loading, setLoading] = useState(false);
 
+  const onClick: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+    setLoading(true);
+    // Full-page navigation to Google. No need to reset `loading`.
+    void signIn("google", { callbackUrl: safeRedirect(callbackUrl) });
+  }, [callbackUrl]);
+
   return (
     <Button
       type="button"
@@ -45,11 +52,7 @@ export function GoogleButton({
       size="lg"
       fullWidth
       loading={loading}
-      onClick={() => {
-        setLoading(true);
-        // Full-page navigation to Google. No need to reset `loading`.
-        void signIn("google", { callbackUrl });
-      }}
+      onClick={onClick}
       className="gap-3 font-semibold"
     >
       <GoogleIcon />

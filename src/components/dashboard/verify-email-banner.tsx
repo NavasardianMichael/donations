@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { useTransition } from "react";
+import { useTransition, useCallback, type MouseEventHandler } from "react";
 
 import { Alert, Button, toast } from "@/components/ui";
 import { resendVerificationAction } from "@/server/actions/auth";
@@ -19,6 +19,18 @@ export function VerifyEmailBanner({ email }: { email: string }) {
   const [pending, startTransition] = useTransition();
   const { update } = useSession();
 
+  const onResend: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+    startTransition(async () => {
+      const result = await resendVerificationAction();
+      if (result.ok) {
+        toast.success(result.message ?? "");
+        await update();
+      } else {
+        toast.error(result.message);
+      }
+    });
+  }, [update]);
+
   return (
     <div className="px-4 pt-4 sm:px-6 lg:px-10">
       <Alert
@@ -29,17 +41,7 @@ export function VerifyEmailBanner({ email }: { email: string }) {
             size="sm"
             variant="outline"
             loading={pending}
-            onClick={() =>
-              startTransition(async () => {
-                const result = await resendVerificationAction();
-                if (result.ok) {
-                  toast.success(result.message ?? "");
-                  await update();
-                } else {
-                  toast.error(result.message);
-                }
-              })
-            }
+            onClick={onResend}
           >
             {t("resendVerification")}
           </Button>

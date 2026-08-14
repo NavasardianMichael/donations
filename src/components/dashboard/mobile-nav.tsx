@@ -4,7 +4,12 @@ import { CircleHelp, LogOut, Menu, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import {
+  useState,
+  useTransition,
+  useCallback,
+  type MouseEventHandler,
+} from "react";
 
 import {
   Avatar,
@@ -42,6 +47,16 @@ export function MobileTopBar({
   const [open, setOpen] = useState(false);
   const [signingOut, startSignOut] = useTransition();
 
+  const onNavigate: MouseEventHandler<HTMLAnchorElement> = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  const onSignOut = useCallback(() => {
+    startSignOut(() => {
+      void signOutAction();
+    });
+  }, [startSignOut]);
+
   return (
     <header className="flex h-topbar shrink-0 items-center justify-between border-b border-subtle bg-surface px-4 md:hidden">
       <Dialog open={open} onOpenChange={setOpen}>
@@ -68,7 +83,7 @@ export function MobileTopBar({
 
             <Link
               href="/settings/payouts"
-              onClick={() => setOpen(false)}
+              onClick={onNavigate}
               className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm text-fg hover:bg-surface-hover"
             >
               <Wallet className="size-4.5 text-muted" aria-hidden="true" />
@@ -77,14 +92,14 @@ export function MobileTopBar({
 
             <Link
               href="/faq"
-              onClick={() => setOpen(false)}
+              onClick={onNavigate}
               className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm text-fg hover:bg-surface-hover"
             >
               <CircleHelp className="size-4.5 text-muted" aria-hidden="true" />
               {t("helpCenter")}
             </Link>
 
-            <form action={() => startSignOut(() => signOutAction())}>
+            <form action={onSignOut}>
               <button
                 type="submit"
                 disabled={signingOut}

@@ -21,6 +21,7 @@ export interface UiLabels {
   copied: string;
   copiedToClipboard: string;
   requiredField: string;
+  addTag: string;
 
   pagination: string;
   previousPage: string;
@@ -32,6 +33,7 @@ export interface UiLabels {
   customAmount: string;
   /** Receives the already-formatted amount. */
   minimum: (amount: string) => string;
+  maximum: (amount: string) => string;
   minimumAndMaximum: (min: string, max: string) => string;
 
   raised: string;
@@ -47,6 +49,7 @@ const DEFAULT_LABELS: UiLabels = {
   copied: "Copied",
   copiedToClipboard: "Copied to clipboard",
   requiredField: "Required field",
+  addTag: "Add",
 
   pagination: "Pagination",
   previousPage: "Previous page",
@@ -56,6 +59,7 @@ const DEFAULT_LABELS: UiLabels = {
   selectAmount: "Select amount",
   customAmount: "Custom amount",
   minimum: (amount) => `Minimum ${amount}`,
+  maximum: (amount) => `Maximum ${amount}`,
   minimumAndMaximum: (min, max) => `Minimum ${min} · maximum ${max}`,
 
   raised: "Raised",

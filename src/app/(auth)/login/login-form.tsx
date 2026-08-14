@@ -4,8 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import {
+  useMemo,
+  useState,
+  useTransition,
+  useCallback,
+  type SubmitEventHandler,
+} from "react";
+import { useForm, type SubmitHandler } from "react-hook-form";
 
 import { GoogleButton } from "@/components/auth/google-button";
 import {
@@ -45,27 +51,37 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
     defaultValues: { email: "", password: "" },
   });
 
-  function onSubmit(values: SignInInput) {
-    setFormError(null);
+  const onSubmit: SubmitHandler<SignInInput> = useCallback(
+    (values) => {
+      setFormError(null);
 
-    startTransition(async () => {
-      const result = await signInAction(values, callbackUrl);
+      startTransition(async () => {
+        const result = await signInAction(values, callbackUrl);
 
-      if (!result.ok) {
-        if (result.fieldErrors) {
-          for (const [name, message] of Object.entries(result.fieldErrors)) {
-            setError(name as keyof SignInInput, { message });
+        if (!result.ok) {
+          if (result.fieldErrors) {
+            for (const [name, message] of Object.entries(result.fieldErrors)) {
+              setError(name as keyof SignInInput, { message });
+            }
           }
+          setFormError(result.message);
+          return;
         }
-        setFormError(result.message);
-        return;
-      }
 
-      // Server Action set the cookie; refresh so the RSC tree sees the session.
-      router.replace(result.data.redirectTo);
-      router.refresh();
-    });
-  }
+        // Server Action set the cookie; refresh so the RSC tree sees the session.
+        router.replace(result.data.redirectTo);
+        router.refresh();
+      });
+    },
+    [callbackUrl, router, setError],
+  );
+
+  const onFormSubmit: SubmitEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      void handleSubmit(onSubmit)(event);
+    },
+    [handleSubmit, onSubmit],
+  );
 
   return (
     <div className="space-y-6">
@@ -73,7 +89,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
 
       <SeparatorWithLabel>{tCommon("or")}</SeparatorWithLabel>
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+      <form onSubmit={onFormSubmit} noValidate className="space-y-4">
         {formError ? (
           <Alert variant="danger" icon={false}>
             {formError}
@@ -84,6 +100,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
           <Input
             type="email"
             autoComplete="email"
+            maxLength={254}
             placeholder={t("fields.emailPlaceholder")}
             {...register("email")}
           />
@@ -104,6 +121,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
           <Input
             type="password"
             autoComplete="current-password"
+            maxLength={200}
             placeholder="••••••••"
             {...register("password")}
           />

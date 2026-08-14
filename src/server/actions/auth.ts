@@ -26,6 +26,7 @@ import {
   signUpSchema,
 } from "@/lib/validations/auth";
 import { resolver } from "@/lib/validations/resolver";
+import { safeRedirect } from "@/lib/safe-redirect";
 
 import {
   fail,
@@ -187,18 +188,6 @@ export async function signOutAction(): Promise<void> {
   await authSignOut({ redirectTo: "/login" });
 }
 
-/**
- * Only ever redirect to a path on this origin. An attacker-supplied
- * `callbackUrl` of `https://evil.example` would otherwise turn the login page
- * into an open redirect.
- */
-function safeRedirect(callbackUrl?: string): string {
-  if (!callbackUrl) return "/dashboard";
-  if (!callbackUrl.startsWith("/") || callbackUrl.startsWith("//")) {
-    return "/dashboard";
-  }
-  return callbackUrl;
-}
 
 // ---------------------------------------------------------------------------
 // Email verification

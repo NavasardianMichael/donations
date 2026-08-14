@@ -22,9 +22,9 @@ const serverSchema = z.object({
    *
    * Credentials come from the acquiring bank (Ameriabank, ACBA, Inecobank…),
    * not from ArCa directly, and are supplied per merchant. All three are
-   * optional here on purpose: without them the app runs with the Donate
-   * button disabled rather than failing to boot — see
-   * `src/lib/payments/arca.ts` for the guard this backs.
+   * optional here on purpose: without them the app still boots and the
+   * donation form stays usable — checkout returns a donor-facing error
+   * instead of charging. See `src/lib/payments/arca.ts` for the guard.
    */
   ARCA_USERNAME: z.string().optional(),
   ARCA_PASSWORD: z.string().optional(),
@@ -36,8 +36,8 @@ const serverSchema = z.object({
    * Paddle Billing — the INTERNATIONAL provider, for cards ArCa cannot take.
    *
    * Optional for the same reason as the ArCa block: with these unset the
-   * international option simply does not render, rather than the app failing to
-   * boot. See `src/lib/payments/paddle.ts` for the guard this backs.
+   * international option still renders, and checkout returns a donor-facing
+   * error instead of charging. See `src/lib/payments/paddle.ts`.
    *
    * `PADDLE_PRODUCT_ID` is required because donation amounts are arbitrary, so
    * there is no catalogue price to charge against — every transaction builds an

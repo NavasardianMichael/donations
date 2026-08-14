@@ -7,9 +7,7 @@ import type { Metadata } from "next";
 import { Avatar, Heading, Lead, ProgressBar, Text } from "@/components/ui";
 import { DonationForm } from "@/components/donation/donation-form";
 import { TrackBeacon } from "@/components/donation/track-beacon";
-import { isArcaConfigured } from "@/lib/payments/arca";
-import { isPaddleConfigured } from "@/lib/payments/paddle";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, isSafeHttpUrl } from "@/lib/utils";
 import {
   getPublicPageBySlug,
   listPublishedSlugs,
@@ -37,7 +35,8 @@ export async function generateMetadata(props: {
   const title = page.seoTitle || page.title;
   const description =
     page.seoDescription || page.description || undefined;
-  const image = page.ogImageUrl || page.coverImageUrl || undefined;
+  const rawImage = page.ogImageUrl || page.coverImageUrl || undefined;
+  const image = rawImage && isSafeHttpUrl(rawImage) ? rawImage : undefined;
 
   return {
     title,
@@ -100,7 +99,7 @@ export default async function DonationPage(props: {
           className="mx-auto"
         />
         <Heading level={1} size="display" className="mt-5">
-          {t("supportTitle", { name: page.user.name ?? page.title })}
+          {page.title}
         </Heading>
         {page.description ? (
           <Lead className="mx-auto mt-3 max-w-xl">{page.description}</Lead>
@@ -124,15 +123,13 @@ export default async function DonationPage(props: {
           currency={page.currency}
           suggestedAmounts={page.suggestedAmounts}
           minAmountMinor={page.minAmountMinor}
+          maxAmountMinor={page.maxAmountMinor}
           suggestedAmountsUsd={page.suggestedAmountsUsd}
           minAmountMinorUsd={page.minAmountMinorUsd}
+          maxAmountMinorUsd={page.maxAmountMinorUsd}
           allowCustomAmount={page.allowCustomAmount}
           collectDonorName={page.collectDonorName}
           collectMessage={page.collectMessage}
-          providers={{
-            arca: isArcaConfigured(),
-            paddle: isPaddleConfigured(),
-          }}
           source="DIRECT"
         />
       </div>

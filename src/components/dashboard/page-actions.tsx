@@ -3,7 +3,14 @@
 import { Copy, EyeOff, Settings, Trash2, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import {
+  useState,
+  useTransition,
+  useCallback,
+  useMemo,
+  type ComponentProps,
+  type MouseEventHandler,
+} from "react";
 
 import {
   AlertDialog,
@@ -43,12 +50,15 @@ export function PageActions({
   title,
   status,
   layout = "icons",
+  showSettings = true,
 }: {
   pageId: string;
   title: string;
   status: PageStatus;
   /** "icons" for the dense card/row footers, "labels" for the mobile stack. */
   layout?: "icons" | "labels";
+  /** Hide on the page chrome — Settings is already a tab there. */
+  showSettings?: boolean;
 }) {
   const t = useTranslations("page.actions");
   const tp = useTranslations("pages");
@@ -62,84 +72,149 @@ export function PageActions({
 
   const published = status === "PUBLISHED";
 
-  function run(action: () => Promise<{ ok: boolean; message?: string }>) {
-    startTransition(async () => {
-      const result = await action();
-      if (result.ok) {
-        toast.success(result.message ?? "");
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "");
-      }
-    });
-  }
+  const run = useCallback(
+    (action: () => Promise<{ ok: boolean; message?: string }>) => {
+      startTransition(async () => {
+        const result = await action();
+        if (result.ok) {
+          toast.success(result.message ?? "");
+          if (confirm.kind === "delete") {
+            router.push("/pages");
+            return;
+          }
+          router.refresh();
+        } else {
+          toast.error(result.message ?? "");
+        }
+      });
+    },
+    [confirm.kind, router],
+  );
 
-  const CONFIRM: Record<
-    Confirmable,
-    {
-      title: string;
-      body: string;
-      confirmLabel: string;
-      variant: "primary" | "destructive";
-      action: () => Promise<{ ok: boolean; message?: string }>;
-    }
-  > = {
-    publish: {
-      title: tp("publishConfirmTitle"),
-      body: tp("publishConfirmBody", { title }),
-      confirmLabel: t("publish"),
-      variant: "primary",
-      action: () => publishPageAction({ id: pageId }),
-    },
-    unpublish: {
-      title: tp("unpublishConfirmTitle"),
-      body: tp("unpublishConfirmBody", { title }),
-      confirmLabel: t("unpublish"),
-      variant: "primary",
-      action: () => unpublishPageAction({ id: pageId }),
-    },
-    duplicate: {
-      title: tp("duplicateConfirmTitle"),
-      body: tp("duplicateConfirmBody", { title }),
-      confirmLabel: t("duplicate"),
-      variant: "primary",
-      action: () => duplicatePageAction({ id: pageId }),
-    },
-    delete: {
-      title: tp("deleteConfirmTitle"),
-      body: tp("deleteConfirmBody", { title }),
-      confirmLabel: t("delete"),
-      variant: "destructive",
-      action: () => deletePageAction({ id: pageId }),
-    },
-  };
+  const publishAction = useCallback(
+    () => publishPageAction({ id: pageId }),
+    [pageId],
+  );
+  const unpublishAction = useCallback(
+    () => unpublishPageAction({ id: pageId }),
+    [pageId],
+  );
+  const duplicateAction = useCallback(
+    () => duplicatePageAction({ id: pageId }),
+    [pageId],
+  );
+  const deleteAction = useCallback(
+    () => deletePageAction({ id: pageId }),
+    [pageId],
+  );
+
+  const CONFIRM = useMemo(
+    () =>
+      ({
+        publish: {
+          title: tp("publishConfirmTitle"),
+          body: tp("publishConfirmBody", { title }),
+          confirmLabel: t("publish"),
+          variant: "primary" as const,
+          action: publishAction,
+        },
+        unpublish: {
+          title: tp("unpublishConfirmTitle"),
+          body: tp("unpublishConfirmBody", { title }),
+          confirmLabel: t("unpublish"),
+          variant: "primary" as const,
+          action: unpublishAction,
+        },
+        duplicate: {
+          title: tp("duplicateConfirmTitle"),
+          body: tp("duplicateConfirmBody", { title }),
+          confirmLabel: t("duplicate"),
+          variant: "primary" as const,
+          action: duplicateAction,
+        },
+        delete: {
+          title: tp("deleteConfirmTitle"),
+          body: tp("deleteConfirmBody", { title }),
+          confirmLabel: t("delete"),
+          variant: "destructive" as const,
+          action: deleteAction,
+        },
+      }) satisfies Record<
+        Confirmable,
+        {
+          title: string;
+          body: string;
+          confirmLabel: string;
+          variant: "primary" | "destructive";
+          action: () => Promise<{ ok: boolean; message?: string }>;
+        }
+      >,
+    [
+      deleteAction,
+      duplicateAction,
+      publishAction,
+      t,
+      title,
+      tp,
+      unpublishAction,
+    ],
+  );
 
   const active = CONFIRM[confirm.kind];
-  const ask = (kind: Confirmable) => setConfirm({ open: true, kind });
+
+  const onAskPublishToggle: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      setConfirm({
+        open: true,
+        kind: published ? "unpublish" : "publish",
+      });
+    }, [published]);
+
+  const onAskDuplicate: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      setConfirm({ open: true, kind: "duplicate" });
+    }, []);
+
+  const onAskDelete: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+    setConfirm({ open: true, kind: "delete" });
+  }, []);
+
+  const onConfirmOpenChange: NonNullable<
+    ComponentProps<typeof AlertDialog>["onOpenChange"]
+  > = useCallback((open) => {
+    setConfirm((c) => ({ ...c, open }));
+  }, []);
+
+  const onConfirmAction: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      run(active.action);
+    }, [active.action, run]);
 
   const withLabels = layout === "labels";
 
   return (
     <>
       <div className="flex items-center gap-2">
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className={withLabels ? "flex-1" : undefined}
-        >
-          <a href={`/pages/${pageId}/settings`}>
-            <Settings />
-            {t("settings")}
-          </a>
-        </Button>
+        {showSettings ? (
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className={withLabels ? "flex-1" : undefined}
+          >
+            <a href={`/pages/${pageId}/settings`}>
+              <Settings />
+              {t("settings")}
+            </a>
+          </Button>
+        ) : null}
 
         <PageActionButton
           label={published ? t("unpublish") : t("publish")}
           icon={published ? EyeOff : Upload}
           withLabel={withLabels}
           disabled={pending}
-          onClick={() => ask(published ? "unpublish" : "publish")}
+          onClick={onAskPublishToggle}
         />
 
         <PageActionButton
@@ -147,7 +222,7 @@ export function PageActions({
           icon={Copy}
           withLabel={withLabels}
           disabled={pending}
-          onClick={() => ask("duplicate")}
+          onClick={onAskDuplicate}
         />
 
         <PageActionButton
@@ -156,14 +231,11 @@ export function PageActions({
           withLabel={withLabels}
           destructive
           disabled={pending}
-          onClick={() => ask("delete")}
+          onClick={onAskDelete}
         />
       </div>
 
-      <AlertDialog
-        open={confirm.open}
-        onOpenChange={(open) => setConfirm((c) => ({ ...c, open }))}
-      >
+      <AlertDialog open={confirm.open} onOpenChange={onConfirmOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{active.title}</AlertDialogTitle>
@@ -173,7 +245,7 @@ export function PageActions({
             <AlertDialogCancel>{tp("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               variant={active.variant}
-              onClick={() => run(active.action)}
+              onClick={onConfirmAction}
             >
               {active.confirmLabel}
             </AlertDialogAction>
@@ -197,7 +269,7 @@ function PageActionButton({
   withLabel: boolean;
   destructive?: boolean;
   disabled?: boolean;
-  onClick: () => void;
+  onClick: MouseEventHandler<HTMLButtonElement>;
 }) {
   const button = (
     <Button

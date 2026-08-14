@@ -197,10 +197,10 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* Type — GHEA Grapalat everywhere, injected by next/font in the root layout.
-     It is a Palatino-derived Armenian *serif*. The Tailwind utility keeps the
-     name `font-sans` so no markup changes if the family is ever swapped. */
-  --font-sans: var(--font-grapalat), Georgia, Cambria, "Times New Roman", serif;
+  /* Type — Mardoto everywhere, injected by next/font in the root layout.
+     Grapalat and Davel Aghvor remain on disk and in `src/lib/fonts.ts`
+     but are not applied. The Tailwind utility keeps the name `font-sans`. */
+  --font-sans: var(--font-mardoto), system-ui, "Segoe UI", sans-serif;
   --font-mono:
     ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 

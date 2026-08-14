@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, type MouseEventHandler } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,24 @@ export function Pagination({
 }: PaginationProps) {
   const labels = useUiLabels();
 
+  const onPreviousPage: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      onPageChange(page - 1);
+    }, [onPageChange, page]);
+
+  const onNextPage: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+    onPageChange(page + 1);
+  }, [onPageChange, page]);
+
+  const onPageClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (event) => {
+      const next = Number(event.currentTarget.dataset.page);
+      if (!Number.isFinite(next)) return;
+      onPageChange(next);
+    },
+    [onPageChange],
+  );
+
   if (pageCount <= 1 && !totalItems) return null;
 
   const from = (page - 1) * pageSize + 1;
@@ -77,7 +96,7 @@ export function Pagination({
             variant="outline"
             size="icon-sm"
             disabled={page <= 1}
-            onClick={() => onPageChange(page - 1)}
+            onClick={onPreviousPage}
           >
             <ChevronLeft aria-hidden="true" />
             <span className="sr-only">{labels.previousPage}</span>
@@ -98,7 +117,8 @@ export function Pagination({
                 variant={item === page ? "primary" : "ghost"}
                 size="icon-sm"
                 aria-current={item === page ? "page" : undefined}
-                onClick={() => onPageChange(item)}
+                data-page={item}
+                onClick={onPageClick}
                 className="tabular"
               >
                 {item}
@@ -110,7 +130,7 @@ export function Pagination({
             variant="outline"
             size="icon-sm"
             disabled={page >= pageCount}
-            onClick={() => onPageChange(page + 1)}
+            onClick={onNextPage}
           >
             <ChevronRight aria-hidden="true" />
             <span className="sr-only">{labels.nextPage}</span>

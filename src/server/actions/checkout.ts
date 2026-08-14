@@ -78,13 +78,14 @@ export async function createCheckoutAction(
       : "";
   const method: PaymentMethod = rawMethod === "PADDLE" ? "PADDLE" : "ARCA";
 
-  // Nothing configured at all: the form should not have submitted, so this is
-  // either a stale page or a direct POST.
-  if (method === "ARCA" && !isArcaConfigured()) {
+  // Credentials are optional so the app can boot without a gateway. The form
+  // stays interactive; this is the point a missing provider becomes an error
+  // the donor can read, rather than a disabled button.
+  if (
+    (method === "ARCA" && !isArcaConfigured()) ||
+    (method === "PADDLE" && !isPaddleConfigured())
+  ) {
     return fail(td("errors.providerUnavailable"));
-  }
-  if (method === "PADDLE" && !isPaddleConfigured()) {
-    return fail(td("errors.methodUnavailable"));
   }
 
   const ip = await clientIp();
@@ -96,15 +97,20 @@ export async function createCheckoutAction(
 
   // The charged currency is NOT the page's display currency for Paddle.
   const chargeCurrency = method === "PADDLE" ? PADDLE_CURRENCY : page.currency;
+  const platformBounds = amountBounds(chargeCurrency);
   const chargeMinimum =
-    method === "PADDLE" ? page.minAmountMinorUsd : page.minAmountMinor;
+    (method === "PADDLE" ? page.minAmountMinorUsd : page.minAmountMinor) ??
+    platformBounds.minMinor;
+  const chargeMaximum =
+    (method === "PADDLE" ? page.maxAmountMinorUsd : page.maxAmountMinor) ??
+    platformBounds.maxMinor;
   const chargeLadder =
     method === "PADDLE" ? page.suggestedAmountsUsd : page.suggestedAmounts;
 
   const schema = checkoutSchema(
     resolver(tv),
     formatMoney(chargeMinimum, chargeCurrency),
-    amountBounds(chargeCurrency),
+    { minMinor: chargeMinimum, maxMinor: chargeMaximum },
   );
   const parsed = schema.safeParse(input);
   if (!parsed.success) {
@@ -131,6 +137,13 @@ export async function createCheckoutAction(
   if (amountMinor < chargeMinimum) {
     return fail(
       tv("amount.tooSmall", { min: formatMoney(chargeMinimum, chargeCurrency) }),
+    );
+  }
+  if (amountMinor > chargeMaximum) {
+    return fail(
+      tv("amount.abovePageMaximum", {
+        max: formatMoney(chargeMaximum, chargeCurrency),
+      }),
     );
   }
   if (!page.allowCustomAmount && !chargeLadder.includes(amountMinor)) {

@@ -9,7 +9,7 @@ import { AppUiLabels } from "@/components/ui-labels-provider";
 import { Toaster } from "@/components/ui";
 import { BRAND } from "@/lib/brand";
 import { clientEnv } from "@/lib/env";
-import { grapalat } from "@/lib/fonts";
+import { mardoto } from "@/lib/fonts";
 import { clientMessages } from "@/i18n/client-messages";
 import { HTML_LANG, OG_LOCALE, type AppLocale } from "@/i18n/config";
 
@@ -54,7 +54,7 @@ export default async function RootLayout({
     <html
       lang={HTML_LANG[locale]}
       suppressHydrationWarning
-      className={grapalat.variable}
+      className={mardoto.variable}
     >
       <body className="min-h-dvh bg-canvas font-sans text-fg antialiased">
         <NextIntlClientProvider messages={clientMessages(messages)}>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { MessageResolver } from "./resolver";
+import { httpUrlSchema } from "./url";
 
 /**
  * Every schema is a factory taking a message resolver — see the note on
@@ -14,7 +15,7 @@ export const emailSchema = (t: MessageResolver) =>
     .toLowerCase()
     .min(1, t("email.required"))
     .email(t("email.invalid"))
-    .max(254);
+    .max(254, t("email.tooLong"));
 
 /**
  * Password strength is validated server-side, not just in the browser — the
@@ -97,7 +98,7 @@ export const profileSchema = (t: MessageResolver) =>
       .max(300, t("bio.tooLong"))
       .optional()
       .or(z.literal("")),
-    image: z.string().url(t("url.invalid")).optional().or(z.literal("")),
+    image: httpUrlSchema(t),
   });
 
 export type SignUpInput = z.infer<ReturnType<typeof signUpSchema>>;

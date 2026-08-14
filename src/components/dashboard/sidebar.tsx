@@ -4,7 +4,7 @@ import { CircleHelp, LogOut, Plus, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, useCallback } from "react";
 
 import { Avatar, Button } from "@/components/ui";
 import { BRAND } from "@/lib/brand";
@@ -34,8 +34,14 @@ export function Sidebar({
   const pathname = usePathname();
   const [signingOut, startSignOut] = useTransition();
 
+  const onSignOut = useCallback(() => {
+    startSignOut(() => {
+      void signOutAction();
+    });
+  }, [startSignOut]);
+
   return (
-    <aside className="hidden w-sidebar min-h-0 shrink-0 flex-col border-r border-subtle bg-canvas-inset md:flex">
+    <aside className="hidden min-h-0 w-sidebar shrink-0 flex-col border-r border-subtle bg-canvas-inset md:flex">
       {/* Identity */}
       <div className="flex shrink-0 items-center gap-3 border-b border-subtle px-5 py-5">
         <Avatar size="md" name={user.name} src={user.image} />
@@ -62,7 +68,7 @@ export function Sidebar({
       {/* Primary navigation */}
       <nav
         aria-label={t("dashboard")}
-        className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-2"
+        className="min-h-0 flex-1 scrollbar-thin overflow-y-auto px-2"
       >
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
@@ -124,7 +130,7 @@ export function Sidebar({
           {t("helpCenter")}
         </Link>
 
-        <form action={() => startSignOut(() => signOutAction())}>
+        <form action={onSignOut}>
           <button
             type="submit"
             disabled={signingOut}

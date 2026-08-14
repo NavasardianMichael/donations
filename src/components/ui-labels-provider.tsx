@@ -25,6 +25,7 @@ export function AppUiLabels({ children }: { children: React.ReactNode }) {
       copied: common("copied"),
       copiedToClipboard: a11y("copiedToClipboard"),
       requiredField: a11y("requiredField"),
+      addTag: a11y("addTag"),
 
       pagination: a11y("pagination"),
       previousPage: a11y("previousPage"),
@@ -34,6 +35,7 @@ export function AppUiLabels({ children }: { children: React.ReactNode }) {
       selectAmount: money("selectAmount"),
       customAmount: money("customAmount"),
       minimum: (amount) => money("minimum", { amount }),
+      maximum: (amount) => money("maximum", { amount }),
       minimumAndMaximum: (min, max) => money("minimumAndMaximum", { min, max }),
 
       raised: money("raised"),

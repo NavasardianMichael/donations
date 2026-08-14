@@ -1,7 +1,13 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEventHandler,
+} from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -44,26 +50,27 @@ export function CopyButton({
     [],
   );
 
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      // Clipboard API needs a secure context; fall back to a temp selection.
-      const el = document.createElement("textarea");
-      el.value = value;
-      el.setAttribute("readonly", "");
-      el.style.position = "fixed";
-      el.style.opacity = "0";
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-    }
+  const handleCopy: MouseEventHandler<HTMLButtonElement> =
+    useCallback(async () => {
+      try {
+        await navigator.clipboard.writeText(value);
+      } catch {
+        // Clipboard API needs a secure context; fall back to a temp selection.
+        const el = document.createElement("textarea");
+        el.value = value;
+        el.setAttribute("readonly", "");
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
 
-    setCopied(true);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setCopied(false), 2000);
-  }, [value]);
+      setCopied(true);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    }, [value]);
 
   return (
     <Button

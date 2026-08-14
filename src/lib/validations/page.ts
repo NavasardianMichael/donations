@@ -9,8 +9,12 @@ import {
 
 import type { MessageResolver } from "./resolver";
 import { slugSchema } from "./slug";
+import { httpUrlSchema } from "./url";
 
 const USD_BOUNDS = amountBounds("usd");
+
+/** Suggested-amount chips on a donation page. Shared with the editor. */
+export const SUGGESTED_AMOUNTS_MAX = 10;
 
 /**
  * AMD first — the platform serves the Armenian market. USD and EUR stay
@@ -51,17 +55,13 @@ export const updatePageSchema = (t: MessageResolver) =>
       .max(2000, t("page.descriptionTooLong"))
       .optional()
       .or(z.literal("")),
-    coverImageUrl: z
-      .string()
-      .url(t("url.invalid"))
-      .optional()
-      .or(z.literal("")),
+    coverImageUrl: httpUrlSchema(t),
 
     currency: currencySchema,
     suggestedAmounts: z
       .array(minorSchema(t).min(ABSOLUTE_MIN_AMOUNT_MINOR, t("amount.whole")))
       .min(1, t("page.amountsMin"))
-      .max(6, t("page.amountsMax"))
+      .max(SUGGESTED_AMOUNTS_MAX, t("page.amountsMax"))
       .refine(
         (amounts) => new Set(amounts).size === amounts.length,
         t("page.amountsUnique"),
@@ -82,21 +82,30 @@ export const updatePageSchema = (t: MessageResolver) =>
           .max(USD_BOUNDS.maxMinor, t("amount.tooLarge")),
       )
       .min(1, t("page.amountsMin"))
-      .max(6, t("page.amountsMax"))
+      .max(SUGGESTED_AMOUNTS_MAX, t("page.amountsMax"))
       .refine(
         (amounts) => new Set(amounts).size === amounts.length,
         t("page.amountsUnique"),
       ),
     allowCustomAmount: z.boolean(),
-    minAmountMinor: minorSchema(t).min(
-      ABSOLUTE_MIN_AMOUNT_MINOR,
-      t("amount.whole"),
-    ),
+    minAmountMinor: minorSchema(t)
+      .min(ABSOLUTE_MIN_AMOUNT_MINOR, t("amount.whole"))
+      .nullable(),
+    maxAmountMinor: minorSchema(t)
+      .min(ABSOLUTE_MIN_AMOUNT_MINOR, t("amount.whole"))
+      .nullable(),
     minAmountMinorUsd: z
       .number()
       .int(t("amount.whole"))
       .min(USD_BOUNDS.minMinor, t("amount.tooSmall", { min: "$1" }))
-      .max(USD_BOUNDS.maxMinor, t("amount.tooLarge")),
+      .max(USD_BOUNDS.maxMinor, t("amount.tooLarge"))
+      .nullable(),
+    maxAmountMinorUsd: z
+      .number()
+      .int(t("amount.whole"))
+      .min(USD_BOUNDS.minMinor, t("amount.tooSmall", { min: "$1" }))
+      .max(USD_BOUNDS.maxMinor, t("amount.tooLarge"))
+      .nullable(),
     goalAmountMinor: minorSchema(t).nullable(),
     showProgressBar: z.boolean(),
     collectDonorName: z.boolean(),
@@ -113,6 +122,26 @@ export const updatePageSchema = (t: MessageResolver) =>
       {
         message: t("page.amountsUsdLengthMismatch"),
         path: ["suggestedAmountsUsd"],
+      },
+    )
+    .refine(
+      (page) =>
+        page.minAmountMinor === null ||
+        page.maxAmountMinor === null ||
+        page.minAmountMinor < page.maxAmountMinor,
+      {
+        message: t("page.minMaxOrder"),
+        path: ["maxAmountMinor"],
+      },
+    )
+    .refine(
+      (page) =>
+        page.minAmountMinorUsd === null ||
+        page.maxAmountMinorUsd === null ||
+        page.minAmountMinorUsd < page.maxAmountMinorUsd,
+      {
+        message: t("page.minMaxOrder"),
+        path: ["maxAmountMinorUsd"],
       },
     );
 
@@ -132,8 +161,13 @@ export const updatePageSeoSchema = (t: MessageResolver) =>
       .max(200, t("page.seoDescriptionTooLong"))
       .optional()
       .or(z.literal("")),
-    seoKeywords: z.string().trim().max(300).optional().or(z.literal("")),
-    ogImageUrl: z.string().url(t("url.invalid")).optional().or(z.literal("")),
+    seoKeywords: z
+      .string()
+      .trim()
+      .max(300, t("page.keywordsTooLong"))
+      .optional()
+      .or(z.literal("")),
+    ogImageUrl: httpUrlSchema(t),
     noIndex: z.boolean(),
   });
 

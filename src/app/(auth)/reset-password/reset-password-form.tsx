@@ -4,8 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import {
+  useMemo,
+  useState,
+  useTransition,
+  useCallback,
+  type SubmitEventHandler,
+} from "react";
+import { useForm, type SubmitHandler } from "react-hook-form";
 
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { resolver } from "@/lib/validations/resolver";
@@ -39,28 +45,38 @@ export function ResetPasswordForm({ token }: { token: string }) {
     defaultValues: { token, password: "", confirmPassword: "" },
   });
 
-  function onSubmit(values: ResetPasswordInput) {
-    setFormError(null);
+  const onSubmit: SubmitHandler<ResetPasswordInput> = useCallback(
+    (values) => {
+      setFormError(null);
 
-    startTransition(async () => {
-      const result = await resetPasswordAction(values);
+      startTransition(async () => {
+        const result = await resetPasswordAction(values);
 
-      if (!result.ok) {
-        if (result.fieldErrors) {
-          for (const [name, message] of Object.entries(result.fieldErrors)) {
-            setError(name as keyof ResetPasswordInput, { message });
+        if (!result.ok) {
+          if (result.fieldErrors) {
+            for (const [name, message] of Object.entries(result.fieldErrors)) {
+              setError(name as keyof ResetPasswordInput, { message });
+            }
           }
+          // The token died between page load and submit. The server flags this
+          // explicitly rather than the client sniffing the message text.
+          if (result.tokenInvalid) setExpired(true);
+          setFormError(result.message);
+          return;
         }
-        // The token died between page load and submit. The server flags this
-        // explicitly rather than the client sniffing the message text.
-        if (result.tokenInvalid) setExpired(true);
-        setFormError(result.message);
-        return;
-      }
 
-      router.replace("/login?reset=1");
-    });
-  }
+        router.replace("/login?reset=1");
+      });
+    },
+    [router, setError],
+  );
+
+  const onFormSubmit: SubmitEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      void handleSubmit(onSubmit)(event);
+    },
+    [handleSubmit, onSubmit],
+  );
 
   if (expired) {
     return (
@@ -76,7 +92,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+    <form onSubmit={onFormSubmit} noValidate className="space-y-4">
       {formError ? (
         <Alert variant="danger" icon={false}>
           {formError}
@@ -94,6 +110,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         <Input
           type="password"
           autoComplete="new-password"
+          maxLength={200}
           placeholder="••••••••••"
           {...register("password")}
         />

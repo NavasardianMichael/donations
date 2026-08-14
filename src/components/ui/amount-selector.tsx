@@ -1,6 +1,13 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useId,
+  useMemo,
+  useState,
+  type ChangeEventHandler,
+  type MouseEventHandler,
+} from "react";
 
 import {
   cn,
@@ -45,7 +52,7 @@ export function AmountSelector({
   onChange,
   currency = "amd",
   allowCustomAmount = true,
-  minAmountMinor = 10000,
+  minAmountMinor,
   maxAmountMinor,
   disabled = false,
   error,
@@ -72,15 +79,25 @@ export function AmountSelector({
 
   const isCustomActive = value !== null && !presets.includes(value);
 
-  function selectPreset(amount: number) {
-    setCustomText("");
-    onChange(amount);
-  }
+  const onPresetClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (event) => {
+      const amount = Number(event.currentTarget.dataset.amount);
+      if (!Number.isFinite(amount)) return;
+      setCustomText("");
+      onChange(amount);
+    },
+    [onChange],
+  );
 
-  function handleCustomChange(next: string) {
-    setCustomText(next);
-    onChange(parseMoneyToMinor(next, currency));
-  }
+  const onCustomChange: ChangeEventHandler<HTMLInputElement, HTMLInputElement> =
+    useCallback(
+      (event) => {
+        const next = event.target.value;
+        setCustomText(next);
+        onChange(parseMoneyToMinor(next, currency));
+      },
+      [currency, onChange],
+    );
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -101,7 +118,8 @@ export function AmountSelector({
               role="radio"
               aria-checked={selected}
               disabled={disabled}
-              onClick={() => selectPreset(amount)}
+              data-amount={amount}
+              onClick={onPresetClick}
               className={cn(
                 "rounded-sm border font-semibold transition-colors outline-none",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
@@ -140,7 +158,7 @@ export function AmountSelector({
               disabled={disabled}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? errorId : undefined}
-              onChange={(e) => handleCustomChange(e.target.value)}
+              onChange={onCustomChange}
               className={cn(
                 inputBase({ inputSize: size === "md" ? "md" : "lg" }),
                 "pl-9",
@@ -159,16 +177,18 @@ export function AmountSelector({
         >
           {error}
         </p>
-      ) : (
+      ) : minAmountMinor != null || maxAmountMinor != null ? (
         <p className="text-xs text-muted">
-          {maxAmountMinor
+          {minAmountMinor != null && maxAmountMinor != null
             ? labels.minimumAndMaximum(
                 formatMoney(minAmountMinor, currency),
                 formatMoney(maxAmountMinor, currency),
               )
-            : labels.minimum(formatMoney(minAmountMinor, currency))}
+            : minAmountMinor != null
+              ? labels.minimum(formatMoney(minAmountMinor, currency))
+              : labels.maximum(formatMoney(maxAmountMinor!, currency))}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -138,6 +138,14 @@ Rules that are easy to break and expensive to get wrong:
    page. No element reserves space for another with padding. Read
    `docs/ui-conventions.md` before writing any positioning, scrolling, height
    or `z-index` CSS; it lists the patterns to avoid and why.
+10. **No inline event handlers in JSX.** Name them, type them as the callback
+    the component expects, and wrap with `useCallback`. For `Input` that is
+    `ChangeEventHandler<HTMLInputElement, HTMLInputElement>`; for `Button`
+    `onClick`, `MouseEventHandler<HTMLButtonElement>`; for a `<form>`,
+    `SubmitEventHandler<HTMLFormElement>`. Custom UI uses that prop's type
+    (`TagInputProps["onChange"]`). Pass a `useState` setter through when the
+    signatures already match. Leave arrows in `useEffect` / `startTransition`
+    / render `.map()` / `t.rich()` — those are not interactive props.
 
 ## Layout
 

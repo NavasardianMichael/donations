@@ -2,7 +2,15 @@
 
 import { CreditCard, Globe, Loader2, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  useTransition,
+  type ChangeEventHandler,
+  type ComponentProps,
+  type SubmitEventHandler,
+} from "react";
 
 import {
   Alert,
@@ -19,23 +27,26 @@ import {
   Text,
   Textarea,
 } from "@/components/ui";
+import { amountBounds } from "@/lib/fees";
 import { formatMoney } from "@/lib/utils";
-import type { PaymentMethod } from "@/lib/validations/donation";
+import { checkoutSchema, type PaymentMethod } from "@/lib/validations/donation";
+import { resolver } from "@/lib/validations/resolver";
 import { createCheckoutAction } from "@/server/actions/checkout";
+import { zodFieldErrors } from "@/server/actions/types";
 
 export interface DonationFormProps {
   pageId: string;
   currency: string;
   suggestedAmounts: number[];
-  minAmountMinor: number;
+  minAmountMinor: number | null;
+  maxAmountMinor: number | null;
   /** The international ladder, in USD cents. Index-matched to the above. */
   suggestedAmountsUsd: number[];
-  minAmountMinorUsd: number;
+  minAmountMinorUsd: number | null;
+  maxAmountMinorUsd: number | null;
   allowCustomAmount: boolean;
   collectDonorName: boolean;
   collectMessage: boolean;
-  /** Which gateways have credentials right now. Evaluated on the server. */
-  providers: { arca: boolean; paddle: boolean };
   source: "DIRECT" | "EMBED";
 }
 
@@ -61,32 +72,37 @@ export function DonationForm({
   currency,
   suggestedAmounts,
   minAmountMinor,
+  maxAmountMinor,
   suggestedAmountsUsd,
   minAmountMinorUsd,
+  maxAmountMinorUsd,
   allowCustomAmount,
   collectDonorName,
   collectMessage,
-  providers,
   source,
 }: DonationFormProps) {
   const t = useTranslations("donation");
   const tMoney = useTranslations("money");
+  const tv = useTranslations("validation");
 
-  // Default to whichever method is actually available, preferring the local
-  // one — this is an Armenian platform and most donors will use an Armenian card.
-  const [method, setMethod] = useState<PaymentMethod>(
-    providers.arca ? "ARCA" : "PADDLE",
-  );
+  // Prefer the local method — this is an Armenian platform and most donors
+  // will use an Armenian card. A missing gateway is handled on submit, not
+  // by hiding the form: the donor can still pick an amount and method.
+  const [method, setMethod] = useState<PaymentMethod>("ARCA");
 
   const isPaddle = method === "PADDLE";
   const activeCurrency = isPaddle ? PADDLE_CURRENCY : currency;
   const activeLadder = isPaddle ? suggestedAmountsUsd : suggestedAmounts;
+  const platformBounds = amountBounds(activeCurrency);
   const activeMinimum = isPaddle ? minAmountMinorUsd : minAmountMinor;
+  const activeMaximum = isPaddle ? maxAmountMinorUsd : maxAmountMinor;
+  const floor = activeMinimum ?? platformBounds.minMinor;
+  const ceiling = activeMaximum ?? platformBounds.maxMinor;
 
   const defaultAmount = (ladder: number[]) => ladder[1] ?? ladder[0] ?? null;
 
   const [amountMinor, setAmountMinor] = useState<number | null>(
-    defaultAmount(providers.arca ? suggestedAmounts : suggestedAmountsUsd),
+    defaultAmount(suggestedAmounts),
   );
   const [donorName, setDonorName] = useState("");
   const [donorEmail, setDonorEmail] = useState("");
@@ -94,9 +110,20 @@ export function DonationForm({
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [website, setWebsite] = useState(""); // honeypot
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
-  const amountValid = amountMinor !== null && amountMinor >= activeMinimum;
+  const amountValid =
+    amountMinor !== null && amountMinor >= floor && amountMinor <= ceiling;
+
+  const amountError =
+    amountMinor !== null && amountMinor < floor
+      ? tv("amount.tooSmall", { min: formatMoney(floor, activeCurrency) })
+      : amountMinor !== null && amountMinor > ceiling
+        ? tv("amount.abovePageMaximum", {
+            max: formatMoney(ceiling, activeCurrency),
+          })
+        : null;
 
   const buttonLabel = useMemo(() => {
     if (!amountMinor) return t("donateNow");
@@ -105,25 +132,89 @@ export function DonationForm({
     });
   }, [amountMinor, activeCurrency, t]);
 
-  function handleMethodChange(next: string) {
-    const chosen: PaymentMethod = next === "PADDLE" ? "PADDLE" : "ARCA";
-    if (chosen === method) return;
-    setMethod(chosen);
-    setError(null);
-    // The amount is denominated in the old method's currency, so carrying it
-    // over would turn 5 000 ֏ into $5 000. Reset to the new ladder's default.
-    setAmountMinor(
-      defaultAmount(chosen === "PADDLE" ? suggestedAmountsUsd : suggestedAmounts),
-    );
-  }
+  const handleMethodChange: NonNullable<
+    ComponentProps<typeof RadioGroup>["onValueChange"]
+  > = useCallback(
+    (next) => {
+      const chosen: PaymentMethod = next === "PADDLE" ? "PADDLE" : "ARCA";
+      if (chosen === method) return;
+      setMethod(chosen);
+      setError(null);
+      setFieldErrors({});
+      // The amount is denominated in the old method's currency, so carrying it
+      // over would turn 5 000 ֏ into $5 000. Reset to the new ladder's default.
+      setAmountMinor(
+        defaultAmount(
+          chosen === "PADDLE" ? suggestedAmountsUsd : suggestedAmounts,
+        ),
+      );
+    },
+    [method, suggestedAmounts, suggestedAmountsUsd],
+  );
 
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!amountValid) return;
-    setError(null);
+  const onDonorNameChange: ChangeEventHandler<
+    HTMLInputElement,
+    HTMLInputElement
+  > = useCallback((event) => {
+    setDonorName(event.target.value);
+    setFieldErrors((prev) => {
+      if (!prev.donorName) return prev;
+      const next = { ...prev };
+      delete next.donorName;
+      return next;
+    });
+  }, []);
 
-    startTransition(async () => {
-      const result = await createCheckoutAction({
+  const onDonorEmailChange: ChangeEventHandler<
+    HTMLInputElement,
+    HTMLInputElement
+  > = useCallback((event) => {
+    setDonorEmail(event.target.value);
+    setFieldErrors((prev) => {
+      if (!prev.donorEmail) return prev;
+      const next = { ...prev };
+      delete next.donorEmail;
+      return next;
+    });
+  }, []);
+
+  const onMessageChange: ChangeEventHandler<
+    HTMLTextAreaElement,
+    HTMLTextAreaElement
+  > = useCallback((event) => {
+    setMessage(event.target.value);
+    setFieldErrors((prev) => {
+      if (!prev.message) return prev;
+      const next = { ...prev };
+      delete next.message;
+      return next;
+    });
+  }, []);
+
+  const onAnonymousChange: NonNullable<
+    ComponentProps<typeof Checkbox>["onCheckedChange"]
+  > = useCallback((checked) => {
+    setIsAnonymous(checked === true);
+  }, []);
+
+  const onWebsiteChange: ChangeEventHandler<
+    HTMLInputElement,
+    HTMLInputElement
+  > = useCallback((event) => {
+    setWebsite(event.target.value);
+  }, []);
+
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      event.preventDefault();
+      if (!amountValid) {
+        setError(amountError ?? t("errors.amountMismatch"));
+        return;
+      }
+      setError(null);
+      setFieldErrors({});
+
+      const payload = {
         pageId,
         method,
         amountMinor,
@@ -133,82 +224,89 @@ export function DonationForm({
         isAnonymous: collectDonorName ? isAnonymous : true,
         source,
         website,
+      };
+
+      const parsed = checkoutSchema(
+        resolver(tv),
+        formatMoney(floor, activeCurrency),
+        { minMinor: floor, maxMinor: ceiling },
+      ).safeParse(payload);
+      if (!parsed.success) {
+        setFieldErrors(zodFieldErrors(parsed.error.issues));
+        setError(tv("checkFields"));
+        return;
+      }
+
+      startTransition(async () => {
+        const result = await createCheckoutAction(parsed.data);
+
+        if (!result.ok) {
+          setError(result.message);
+          if (result.fieldErrors) setFieldErrors(result.fieldErrors);
+          return;
+        }
+
+        // A Paddle overlay nested in a third-party iframe is unreliable, so an
+        // embedded widget hands checkout to a new top-level tab. The server
+        // decides this, not the client.
+        if (result.data.newTab) {
+          window.open(result.data.redirectUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+
+        // Cross-origin: a full navigation, not router.push.
+        window.location.assign(result.data.redirectUrl);
       });
-
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-
-      // A Paddle overlay nested in a third-party iframe is unreliable, so an
-      // embedded widget hands checkout to a new top-level tab. The server
-      // decides this, not the client.
-      if (result.data.newTab) {
-        window.open(result.data.redirectUrl, "_blank", "noopener,noreferrer");
-        return;
-      }
-
-      // Cross-origin: a full navigation, not router.push.
-      window.location.assign(result.data.redirectUrl);
-    });
-  }
-
-  if (!providers.arca && !providers.paddle) {
-    return (
-      <Card tone="warm">
-        <CardContent className="space-y-4 py-6">
-          <Heading level={2} size="sm">
-            {tMoney("selectAmount")}
-          </Heading>
-          <AmountSelector
-            suggestedAmounts={suggestedAmounts}
-            value={amountMinor}
-            onChange={setAmountMinor}
-            currency={currency}
-            allowCustomAmount={allowCustomAmount}
-            minAmountMinor={minAmountMinor}
-            disabled
-          />
-          <Alert variant="warning" title={t("disabledTitle")}>
-            {t("disabledBody")}
-          </Alert>
-          <Button type="button" size="lg" fullWidth disabled>
-            {t("disabledButton")}
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+    },
+    [
+      activeCurrency,
+      amountError,
+      amountMinor,
+      amountValid,
+      ceiling,
+      collectDonorName,
+      collectMessage,
+      donorEmail,
+      donorName,
+      floor,
+      isAnonymous,
+      message,
+      method,
+      pageId,
+      source,
+      t,
+      tv,
+      website,
+    ],
+  );
 
   return (
     <Card tone="warm">
       <CardContent className="py-6">
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-          {providers.arca && providers.paddle ? (
-            <div>
-              <Heading level={2} size="sm" className="mb-3">
-                {t("method.label")}
-              </Heading>
-              <RadioGroup
-                value={method}
-                onValueChange={handleMethodChange}
-                aria-label={t("method.label")}
-              >
-                <RadioOption value="ARCA" description={t("method.arcaHint")}>
-                  <span className="flex items-center gap-1.5">
-                    <CreditCard className="size-4" aria-hidden="true" />
-                    {t("method.arca")}
-                  </span>
-                </RadioOption>
-                <RadioOption value="PADDLE" description={t("method.paddleHint")}>
-                  <span className="flex items-center gap-1.5">
-                    <Globe className="size-4" aria-hidden="true" />
-                    {t("method.paddle")}
-                  </span>
-                </RadioOption>
-              </RadioGroup>
-            </div>
-          ) : null}
+          <div>
+            <Heading level={2} size="sm" className="mb-3">
+              {t("method.label")}
+            </Heading>
+            <RadioGroup
+              value={method}
+              onValueChange={handleMethodChange}
+              aria-label={t("method.label")}
+            >
+              <RadioOption value="ARCA" description={t("method.arcaHint")}>
+                <span className="flex items-center gap-1.5">
+                  <CreditCard className="size-4" aria-hidden="true" />
+                  {t("method.arca")}
+                </span>
+              </RadioOption>
+              <RadioOption value="PADDLE" description={t("method.paddleHint")}>
+                <span className="flex items-center gap-1.5">
+                  <Globe className="size-4" aria-hidden="true" />
+                  {t("method.paddle")}
+                </span>
+              </RadioOption>
+            </RadioGroup>
+          </div>
 
           <div>
             <Heading level={2} size="sm" className="mb-3">
@@ -223,39 +321,48 @@ export function DonationForm({
               onChange={setAmountMinor}
               currency={activeCurrency}
               allowCustomAmount={allowCustomAmount}
-              minAmountMinor={activeMinimum}
+              minAmountMinor={activeMinimum ?? undefined}
+              maxAmountMinor={activeMaximum ?? undefined}
+              error={amountError}
               size="lg"
             />
           </div>
 
           {collectDonorName ? (
-            <Field label={t("donorName")}>
+            <Field label={t("donorName")} error={fieldErrors.donorName}>
               <Input
                 autoComplete="name"
+                maxLength={80}
                 disabled={isAnonymous}
                 value={donorName}
-                onChange={(e) => setDonorName(e.target.value)}
+                onChange={onDonorNameChange}
               />
             </Field>
           ) : null}
 
-          <Field label={t("donorEmail")} description={t("emailReceiptHint")}>
+          <Field
+            label={t("donorEmail")}
+            description={t("emailReceiptHint")}
+            error={fieldErrors.donorEmail}
+          >
             <Input
               type="email"
               autoComplete="email"
+              maxLength={254}
               value={donorEmail}
-              onChange={(e) => setDonorEmail(e.target.value)}
+              onChange={onDonorEmailChange}
             />
           </Field>
 
           {collectMessage ? (
-            <Field label={t("donorMessage")}>
+            <Field label={t("donorMessage")} error={fieldErrors.message}>
               <Textarea
                 rows={3}
                 resizable={false}
+                maxLength={500}
                 placeholder={t("donorMessagePlaceholder")}
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={onMessageChange}
               />
             </Field>
           ) : null}
@@ -264,7 +371,7 @@ export function DonationForm({
             <Field orientation="horizontal" label={t("donateAnonymously")}>
               <Checkbox
                 checked={isAnonymous}
-                onCheckedChange={(checked) => setIsAnonymous(checked === true)}
+                onCheckedChange={onAnonymousChange}
               />
             </Field>
           ) : null}
@@ -281,7 +388,7 @@ export function DonationForm({
               tabIndex={-1}
               autoComplete="off"
               value={website}
-              onChange={(e) => setWebsite(e.target.value)}
+              onChange={onWebsiteChange}
             />
           </div>
 

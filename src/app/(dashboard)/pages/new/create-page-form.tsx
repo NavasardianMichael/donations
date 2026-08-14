@@ -4,8 +4,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Loader2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  useCallback,
+  type ChangeEventHandler,
+  type MouseEventHandler,
+  type SubmitEventHandler,
+} from "react";
+import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 
 import { Alert, Button, Field, Input, Text } from "@/components/ui";
 import { BRAND } from "@/lib/brand";
@@ -14,7 +23,7 @@ import { createPageSchema, type CreatePageInput } from "@/lib/validations/page";
 import { resolver } from "@/lib/validations/resolver";
 import { checkSlugAction, createPageAction } from "@/server/actions/pages";
 
-import { SLUG_MIN } from "@/lib/validations/slug";
+import { SLUG_MAX, SLUG_MIN } from "@/lib/validations/slug";
 
 /** The server's verdict for one specific slug value. */
 interface SlugVerdict {
@@ -95,29 +104,57 @@ export function CreatePageForm() {
             : "taken"
           : "checking";
 
-  function onSubmit(values: CreatePageInput) {
-    setFormError(null);
+  const onTitleChange: ChangeEventHandler<HTMLInputElement, HTMLInputElement> =
+    useCallback(
+      (event) => {
+        if (slugEdited) return;
+        setValue("slug", slugify(event.target.value));
+      },
+      [setValue, slugEdited],
+    );
 
-    startTransition(async () => {
-      const result = await createPageAction(values);
+  const onSlugChange: ChangeEventHandler<HTMLInputElement, HTMLInputElement> =
+    useCallback(() => {
+      setSlugEdited(true);
+    }, []);
 
-      if (!result.ok) {
-        if (result.fieldErrors) {
-          for (const [name, message] of Object.entries(result.fieldErrors)) {
-            setError(name as keyof CreatePageInput, { message });
+  const onCancel: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+    router.push("/pages");
+  }, [router]);
+
+  const onSubmit: SubmitHandler<CreatePageInput> = useCallback(
+    (values) => {
+      setFormError(null);
+
+      startTransition(async () => {
+        const result = await createPageAction(values);
+
+        if (!result.ok) {
+          if (result.fieldErrors) {
+            for (const [name, message] of Object.entries(result.fieldErrors)) {
+              setError(name as keyof CreatePageInput, { message });
+            }
           }
+          setFormError(result.message);
+          return;
         }
-        setFormError(result.message);
-        return;
-      }
 
-      router.replace(`/pages/${result.data.id}/settings`);
-      router.refresh();
-    });
-  }
+        router.replace(`/pages/${result.data.id}/settings`);
+        router.refresh();
+      });
+    },
+    [router, setError],
+  );
+
+  const onFormSubmit: SubmitEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      void handleSubmit(onSubmit)(event);
+    },
+    [handleSubmit, onSubmit],
+  );
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+    <form onSubmit={onFormSubmit} noValidate className="space-y-5">
       {formError ? (
         <Alert variant="danger" icon={false}>
           {formError}
@@ -133,12 +170,10 @@ export function CreatePageForm() {
         <Input
           autoFocus
           autoComplete="off"
+          maxLength={120}
           placeholder={t("titlePlaceholder")}
           {...register("title", {
-            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-              if (slugEdited) return;
-              setValue("slug", slugify(event.target.value));
-            },
+            onChange: onTitleChange,
           })}
         />
       </Field>
@@ -153,13 +188,14 @@ export function CreatePageForm() {
         <Input
           autoComplete="off"
           spellCheck={false}
+          maxLength={SLUG_MAX}
           placeholder="makur-jur"
           leading={
             <span className="text-xs whitespace-nowrap">{BRAND.domain}/d/</span>
           }
           className="pl-30"
           {...register("slug", {
-            onChange: () => setSlugEdited(true),
+            onChange: onSlugChange,
           })}
         />
       </Field>
@@ -169,17 +205,13 @@ export function CreatePageForm() {
       </Text>
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push("/pages")}
-        >
+        <Button type="button" variant="outline" onClick={onCancel}>
           {tc("cancel")}
         </Button>
         <Button
           type="submit"
           loading={pending}
-          disabled={slugStatus === "taken"}
+          disabled={slugStatus === "taken" || slugStatus === "checking"}
         >
           {t("createSubmit")}
         </Button>

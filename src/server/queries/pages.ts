@@ -128,6 +128,24 @@ export const getOwnedPage = cache(async function getOwnedPage(
   });
 });
 
+/** Fields the embed tab needs — selected explicitly so the type cannot drift. */
+export const getOwnedEmbedSettings = cache(async function getOwnedEmbedSettings(
+  userId: string,
+  pageId: string,
+) {
+  return prisma.donationPage.findFirst({
+    where: { id: pageId, userId, deletedAt: null },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      embedEnabled: true,
+      embedAllowAnyOrigin: true,
+      embedAllowedOrigins: true,
+    },
+  });
+});
+
 /** Is this slug free? Excludes one page so it can keep its own slug. */
 export async function isSlugAvailable(
   slug: string,

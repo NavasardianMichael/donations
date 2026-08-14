@@ -16,7 +16,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+  type ComponentProps,
+  type MouseEventHandler,
+} from "react";
 
 import {
   Accordion,
@@ -34,6 +39,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
   AmountSelector,
+  type AmountSelectorProps,
   Avatar,
   Badge,
   Button,
@@ -164,6 +170,49 @@ export function KitchenSink() {
   const [checked, setChecked] = useState(true);
   const [sliderValue, setSliderValue] = useState([40]);
 
+  const onToggleTheme: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      setTheme(resolvedTheme === "dark" ? "light" : "dark");
+    }, [resolvedTheme, setTheme]);
+
+  const onCheckedChange: NonNullable<
+    ComponentProps<typeof Checkbox>["onCheckedChange"]
+  > = useCallback((value) => {
+    setChecked(value === true);
+  }, []);
+
+  const onToastDefault: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      toast("Page saved");
+    }, []);
+
+  const onToastSuccess: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      toast.success("Page published", {
+        description: "Live at /d/clean-water",
+      });
+    }, []);
+
+  const onToastError: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+    toast.error("Could not save changes");
+  }, []);
+
+  const onToastUndo: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+    toast("Restored");
+  }, []);
+
+  const onToastWithAction: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      toast("Draft deleted", {
+        action: { label: "Undo", onClick: onToastUndo },
+      });
+    }, [onToastUndo]);
+
+  const onAmountNoop: AmountSelectorProps["onChange"] = useCallback(
+    (_amount) => {},
+    [],
+  );
+
   return (
     <TooltipProvider>
       <div className="mx-auto max-w-4xl space-y-14 px-4 py-10 sm:px-6 lg:px-8">
@@ -178,13 +227,7 @@ export function KitchenSink() {
               and state. Toggle the theme to verify both palettes.
             </Lead>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() =>
-              setTheme(resolvedTheme === "dark" ? "light" : "dark")
-            }
-          >
+          <Button variant="outline" size="icon" onClick={onToggleTheme}>
             {resolvedTheme === "dark" ? <Sun /> : <Moon />}
             <span className="sr-only">Toggle theme</span>
           </Button>
@@ -380,10 +423,7 @@ export function KitchenSink() {
               label="Allow custom amounts"
               description="Donors can type any amount above the minimum."
             >
-              <Checkbox
-                checked={checked}
-                onCheckedChange={(v) => setChecked(v === true)}
-              />
+              <Checkbox checked={checked} onCheckedChange={onCheckedChange} />
             </Field>
 
             <Field orientation="horizontal" label="Indeterminate">
@@ -500,33 +540,16 @@ export function KitchenSink() {
           </div>
 
           <Row label="Toast">
-            <Button variant="outline" onClick={() => toast("Page saved")}>
+            <Button variant="outline" onClick={onToastDefault}>
               Default
             </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                toast.success("Page published", {
-                  description: "Live at /d/clean-water",
-                })
-              }
-            >
+            <Button variant="outline" onClick={onToastSuccess}>
               Success
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => toast.error("Could not save changes")}
-            >
+            <Button variant="outline" onClick={onToastError}>
               Error
             </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                toast("Draft deleted", {
-                  action: { label: "Undo", onClick: () => toast("Restored") },
-                })
-              }
-            >
+            <Button variant="outline" onClick={onToastWithAction}>
               With action
             </Button>
           </Row>
@@ -872,13 +895,13 @@ export function KitchenSink() {
               <AmountSelector
                 suggestedAmounts={[50000, 100000, 250000, 1000000]}
                 value={null}
-                onChange={() => {}}
+                onChange={onAmountNoop}
                 allowCustomAmount={false}
               />
               <AmountSelector
                 suggestedAmounts={[100000, 500000, 1000000]}
                 value={5000}
-                onChange={() => {}}
+                onChange={onAmountNoop}
                 error="Minimum donation is $1.00"
               />
             </div>
