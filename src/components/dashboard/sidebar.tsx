@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, LogOut, Plus, Wallet } from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,7 +11,7 @@ import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
 
-import { isActive, NAV_ITEMS } from "./nav-items";
+import { isActive, NAV_ITEMS, SECONDARY_NAV_ITEMS } from "./nav-items";
 
 /**
  * The persistent sidebar: `md` and up.
@@ -105,30 +105,28 @@ export function Sidebar({
 
       {/* Secondary */}
       <div className="shrink-0 space-y-0.5 border-t border-subtle px-2 py-4">
-        <Link
-          href="/settings/payouts"
-          aria-current={
-            isActive(pathname, "/settings/payouts") ? "page" : undefined
-          }
-          className={cn(
-            "flex items-center gap-3 rounded-sm py-2.5 pl-4 text-sm transition-colors",
-            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-            isActive(pathname, "/settings/payouts")
-              ? "bg-surface-active font-semibold text-fg"
-              : "text-muted hover:bg-surface-hover hover:text-fg",
-          )}
-        >
-          <Wallet className="size-4.5 shrink-0" aria-hidden="true" />
-          {t("payouts")}
-        </Link>
+        {SECONDARY_NAV_ITEMS.map((item) => {
+          const active = isActive(pathname, item.href);
+          const Icon = item.icon;
 
-        <Link
-          href="/faq"
-          className="flex items-center gap-3 rounded-sm py-2.5 pl-4 text-sm text-muted transition-colors hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <CircleHelp className="size-4.5 shrink-0" aria-hidden="true" />
-          {t("helpCenter")}
-        </Link>
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-sm py-2.5 pl-4 text-sm transition-colors",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                active
+                  ? "bg-surface-active font-semibold text-fg"
+                  : "text-muted hover:bg-surface-hover hover:text-fg",
+              )}
+            >
+              <Icon className="size-4.5 shrink-0" aria-hidden="true" />
+              {t(item.labelKey)}
+            </Link>
+          );
+        })}
 
         <form action={onSignOut}>
           <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, LogOut, Menu, Wallet } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -25,7 +25,7 @@ import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
 
-import { isActive, NAV_ITEMS } from "./nav-items";
+import { isActive, NAV_ITEMS, SECONDARY_NAV_ITEMS } from "./nav-items";
 
 /**
  * Mobile chrome, below `md`: a slim top bar with the wordmark and an overflow
@@ -81,23 +81,21 @@ export function MobileTopBar({
               </div>
             </div>
 
-            <Link
-              href="/settings/payouts"
-              onClick={onNavigate}
-              className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm text-fg hover:bg-surface-hover"
-            >
-              <Wallet className="size-4.5 text-muted" aria-hidden="true" />
-              {t("payouts")}
-            </Link>
+            {SECONDARY_NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
 
-            <Link
-              href="/faq"
-              onClick={onNavigate}
-              className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm text-fg hover:bg-surface-hover"
-            >
-              <CircleHelp className="size-4.5 text-muted" aria-hidden="true" />
-              {t("helpCenter")}
-            </Link>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className="flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm text-fg hover:bg-surface-hover"
+                >
+                  <Icon className="size-4.5 text-muted" aria-hidden="true" />
+                  {t(item.labelKey)}
+                </Link>
+              );
+            })}
 
             <form action={onSignOut}>
               <button

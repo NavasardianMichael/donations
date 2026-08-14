@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { Wordmark } from "@/components/brand/wordmark";
+import { Container } from "@/components/ui";
 import { copyrightLine } from "@/lib/brand";
 
 /** Public footer, matching `public_donation_page_mobile`. */
@@ -10,7 +11,7 @@ export async function SiteFooter() {
 
   return (
     <footer className="border-t border-subtle bg-surface">
-      <div className="flex flex-col items-center gap-4 px-4 py-8 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-10">
+      <Container className="flex flex-col items-center gap-4 py-8 text-center sm:flex-row sm:justify-between sm:text-left">
         <div className="space-y-1">
           <Wordmark size="sm" />
           <p className="text-xs text-muted">{t("tagline")}</p>
@@ -40,7 +41,7 @@ export async function SiteFooter() {
         </nav>
 
         <p className="text-xs text-muted">{copyrightLine()}</p>
-      </div>
+      </Container>
     </footer>
   );
 }

@@ -38,7 +38,7 @@ export async function contactAction(
     return fail(tv("checkFields"), zodFieldErrors(parsed.error.issues));
   }
 
-  const { name, email, subject, message, website } = parsed.data;
+  const { name, email, message, website } = parsed.data;
 
   if (website) return ok({ sent: true });
 
@@ -49,13 +49,10 @@ export async function contactAction(
     return rateLimited(await limiterMessage(retryAfter), retryAfter);
   }
 
-  const subjectValue = subject?.trim() ? subject.trim() : null;
-
   const submission = await prisma.contactSubmission.create({
     data: {
       name,
       email,
-      subject: subjectValue,
       message,
     },
   });
@@ -68,7 +65,6 @@ export async function contactAction(
     contactReceiptEmail({
       name,
       email,
-      subject: subjectValue,
       message,
       t: resolver(te),
     }),

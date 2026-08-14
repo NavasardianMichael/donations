@@ -40,7 +40,6 @@ export function ContactForm() {
     defaultValues: {
       name: "",
       email: "",
-      subject: "",
       message: "",
       website: "",
     },
@@ -105,14 +104,6 @@ export function ContactForm() {
           disabled={pending}
           {...register("email")}
         />
-      </Field>
-
-      <Field
-        label={t("subject")}
-        error={errors.subject?.message}
-        hint={tCommon("optional")}
-      >
-        <Input maxLength={120} disabled={pending} {...register("subject")} />
       </Field>
 
       <Field

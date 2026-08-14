@@ -106,12 +106,6 @@ export const contactSchema = (t: MessageResolver) =>
       .min(1, t("email.required"))
       .email(t("email.invalid"))
       .max(254, t("email.tooLong")),
-    subject: z
-      .string()
-      .trim()
-      .max(120, t("subject.tooLong"))
-      .optional()
-      .or(z.literal("")),
     message: z
       .string()
       .trim()

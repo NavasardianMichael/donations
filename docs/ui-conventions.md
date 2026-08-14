@@ -37,6 +37,47 @@ Marketing and public pages (`(marketing)`, `(public)`) are documents, not an
 app. They scroll normally and their header is `sticky top-0` in flow — correct
 there, and not a precedent for the dashboard.
 
+## Without a sidebar, `<Container>` sets the measure
+
+The dashboard's content width is a by-product of its shape: the sidebar takes
+`w-sidebar` and the workspace column gets what is left. The surfaces with no
+sidebar — `(marketing)`, `(public)`, `(auth)` — have nothing playing that role,
+so on a wide monitor a form or a paragraph would run the full viewport. They get
+their bounds from `Container` in `src/components/ui`, which owns both the gutter
+scale (`px-4 sm:px-6 lg:px-10`) and the maximum measure.
+
+**One width per surface, not per page.** The header, the footer and the body all
+pass the same `size`, because a header that runs wider than the content beneath
+it reads as a misalignment rather than a choice. That is the whole reason the
+prop names a surface:
+
+- `size="content"` (default) — `max-w-content`, 64rem. The marketing surface:
+  `SiteHeader`, `SiteFooter`, the landing sections, FAQ, contact, legal.
+- `size="reading"` — `max-w-reading`, 44rem. The donation surface: the
+  `(public)` chrome and the donation page under it. The wordmark tracks the
+  donation card's measure — alone in the far corner of a wide screen it read as
+  a broken page rather than a minimal one.
+
+Both tokens are declared in `globals.css`; read them through `Container` rather
+than writing `max-w-content` by hand, so the gutters travel with the width. A
+narrower measure *inside* a container is still fine — `Lead` capped at
+`max-w-xl`, a status card at `max-w-md` — because it reads as an element,
+not as the page's edge.
+
+Two things follow from where it sits in the tree:
+
+- **A full-bleed background belongs on the `<section>`, the `Container` goes
+  inside it.** That is what lets the hero gradient and the sunken band reach the
+  viewport edge while their text stops. Put the background on the `Container`
+  and it becomes a floating panel.
+- **Vertical padding stays on the `Container`'s `className`**, horizontal
+  padding never does — the whole point is that one file decides the gutter.
+
+`(auth)` predates this and centres its own `max-w-md` card. That is a
+deliberately different measure — a single card, not a page — and it is fine as
+it is. `/embed/*` gets no container at all: the host page's iframe is the only
+thing entitled to set its width.
+
 ## Patterns to avoid
 
 ### `position: fixed` for anything in the layout

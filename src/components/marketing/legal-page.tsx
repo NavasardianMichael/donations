@@ -1,4 +1,4 @@
-import { Heading, Lead, Text } from "@/components/ui";
+import { Container, Heading, Lead, Text } from "@/components/ui";
 
 export interface LegalSection {
   title: string;
@@ -17,7 +17,7 @@ export function LegalPage({
   sections: LegalSection[];
 }) {
   return (
-    <div className="px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+    <Container className="py-12 lg:py-16">
       <header>
         <Heading level={1} size="display">
           {title}
@@ -46,6 +46,6 @@ export function LegalPage({
           </section>
         ))}
       </div>
-    </div>
+    </Container>
   );
 }

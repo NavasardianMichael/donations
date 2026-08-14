@@ -174,26 +174,23 @@ export function passwordResetEmail({
 export function contactReceiptEmail(options: {
   name: string;
   email: string;
-  subject: string | null;
   message: string;
   t: EmailTranslator;
 }): EmailContent {
-  const { name, email, subject, message, t } = options;
-  const subjectLine = subject || t("contactReceipt.noSubject");
+  const { name, email, message, t } = options;
   const heading = t("contactReceipt.heading");
 
   return {
-    subject: t("contactReceipt.subject", { subject: subjectLine }),
+    subject: t("contactReceipt.subject", { name }),
     html: layout({
-      preheader: `${name} — ${subjectLine}`,
+      preheader: `${name} <${email}>`,
       heading,
-      body: `<p style="margin:0 0 8px;"><strong style="color:${FG};">${escapeHtml(t("contactReceipt.from"))}:</strong> ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;</p>
-             <p style="margin:0 0 16px;"><strong style="color:${FG};">${escapeHtml(t("contactReceipt.subjectLabel"))}:</strong> ${escapeHtml(subjectLine)}</p>
+      body: `<p style="margin:0 0 16px;"><strong style="color:${FG};">${escapeHtml(t("contactReceipt.from"))}:</strong> ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;</p>
              <p style="margin:0;white-space:pre-wrap;">${escapeHtml(message)}</p>`,
       orPasteLabel: t("orPasteLink"),
       whyReceiving: t("whyReceiving", { brand: BRAND.name }),
     }),
-    text: `${heading}\n\n${t("contactReceipt.from")}: ${name} <${email}>\n${t("contactReceipt.subjectLabel")}: ${subjectLine}\n\n${message}`,
+    text: `${heading}\n\n${t("contactReceipt.from")}: ${name} <${email}>\n\n${message}`,
   };
 }
 

@@ -13,6 +13,7 @@ import {
   Button,
   Card,
   CardContent,
+  Container,
   Heading,
   Lead,
   Text,
@@ -94,7 +95,7 @@ export default async function FaqPage() {
         }}
       />
 
-      <div className="px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+      <Container className="py-12 lg:py-16">
         <header className="text-center">
           <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-accent-subtle">
             <MessageCircleQuestion
@@ -156,7 +157,7 @@ export default async function FaqPage() {
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </Container>
     </>
   );
 }

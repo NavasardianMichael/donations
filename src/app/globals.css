@@ -217,6 +217,17 @@
   --spacing-sidebar-collapsed: 5rem; /* 80px icon-only */
   --spacing-topbar: 4rem;
 
+  /* Measure for the surfaces with no sidebar — marketing and public. The
+     dashboard needs neither: the sidebar and the workspace column already
+     bound its content.
+
+     One width per surface, shared by its chrome and its pages, so a header
+     never runs wider than the content under it: `max-w-content` is the
+     marketing surface, `max-w-reading` the donation surface. Both are consumed
+     through `<Container>`, not by hand. */
+  --container-content: 64rem; /* 1024px */
+  --container-reading: 44rem; /* 704px */
+
   /* Elevation — an ambient lift, not a drop shadow. */
   --shadow-lift: 0 1px 4px 0 rgb(0 0 0 / 0.04);
   --shadow-overlay:

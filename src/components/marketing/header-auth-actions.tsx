@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 
+import { HeaderUserMenu } from "@/components/marketing/header-user-menu";
 import { Button, Skeleton } from "@/components/ui";
 
 /**
@@ -23,18 +24,14 @@ import { Button, Skeleton } from "@/components/ui";
  */
 export function HeaderAuthActions() {
   const t = useTranslations("marketing");
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   if (status === "loading") {
-    return <Skeleton className="h-8 w-32" />;
+    return <Skeleton className="h-8 w-32 rounded-full" />;
   }
 
   if (status === "authenticated") {
-    return (
-      <Button asChild size="sm">
-        <Link href="/dashboard">{t("dashboard")}</Link>
-      </Button>
-    );
+    return <HeaderUserMenu user={session.user} />;
   }
 
   return (

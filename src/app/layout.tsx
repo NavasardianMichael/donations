@@ -54,6 +54,14 @@ export default async function RootLayout({
     <html
       lang={HTML_LANG[locale]}
       suppressHydrationWarning
+      /**
+       * `globals.css` sets `scroll-behavior: smooth` on `html` for in-page
+       * anchors (the FAQ and the landing nav). Next 16 stopped suspending that
+       * during route transitions unless asked, which made a navigation animate
+       * its way to the top instead of arriving there. This attribute opts back
+       * into the suspend-and-restore, and is what the dev warning asks for.
+       */
+      data-scroll-behavior="smooth"
       className={mardoto.variable}
     >
       <body className="min-h-dvh bg-canvas font-sans text-fg antialiased">

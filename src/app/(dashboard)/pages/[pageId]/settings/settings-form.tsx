@@ -232,7 +232,7 @@ export function PageSettingsForm({
                     {BRAND.domain}/d/
                   </span>
                 }
-                className="pl-30"
+                className="pl-22"
                 {...register("slug")}
               />
             </Field>
@@ -383,9 +383,8 @@ function SlugStatus({
   return (
     <span
       aria-live="polite"
-      className={`inline-flex items-center gap-1 ${
-        available ? "text-success" : "text-danger"
-      }`}
+      className={`inline-flex items-center gap-1 ${available ? "text-success" : "text-danger"
+        }`}
     >
       {available ? (
         <Check className="size-3.5" aria-hidden="true" />

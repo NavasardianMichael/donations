@@ -111,8 +111,12 @@ Rules that are easy to break and expensive to get wrong:
   file if it is ever recorded.
 - Amount **bounds are not currency-agnostic**: `100_00` minor units is 100 ֏ but
   $100. Use `amountBounds(currency)`, never the bare AMD constants.
-- Payouts to creators are still a placeholder. Do not build payout or
-  onboarding screens without an explicit request.
+- Payouts to creators are still a placeholder: no provider splits per creator,
+  and nothing transfers money. `/settings/payouts` is a complete screen over
+  that gap — balances derived from `Donation` rows, a live destination form —
+  whose two final actions (save, request) report "not yet" instead of
+  persisting. There is no payout table. Do not build onboarding screens, or
+  wire either action up, without an explicit request.
 
 ## Non-negotiables
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Wordmark } from "@/components/brand/wordmark";
 import { HeaderAuthActions } from "@/components/marketing/header-auth-actions";
+import { Container } from "@/components/ui";
 
 /**
  * Public header, per the `public_donation_page_tablet` design: wordmark left,
@@ -23,7 +24,7 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-subtle bg-surface/95 backdrop-blur">
-      <div className="flex h-topbar items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
+      <Container className="flex h-topbar items-center justify-between gap-4">
         <Wordmark size="md" />
 
         <nav aria-label={t("navFaq")} className="hidden sm:block">
@@ -44,7 +45,7 @@ export async function SiteHeader() {
         <div className="flex items-center gap-2">
           <HeaderAuthActions />
         </div>
-      </div>
+      </Container>
     </header>
   );
 }

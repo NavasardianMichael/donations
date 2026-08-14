@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { Wordmark } from "@/components/brand/wordmark";
-import { Button, Heading, Lead, Text } from "@/components/ui";
+import { Button, Container, Heading, Lead, Text } from "@/components/ui";
 import { BRAND } from "@/lib/brand";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -47,7 +47,7 @@ export default async function LandingPage() {
           className="pointer-events-none absolute -right-24 -bottom-32 size-[28rem] rounded-full bg-accent/10 blur-3xl motion-safe:animate-[pulse_8s_ease-in-out_infinite]"
         />
 
-        <div className="relative flex flex-col items-start px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <Container className="relative flex flex-col items-start py-20 sm:py-28 lg:py-32">
           <Wordmark size="lg" className="motion-safe:animate-[fade-up_0.6s_ease-out_both]" />
           <Heading
             level={1}
@@ -70,34 +70,36 @@ export default async function LandingPage() {
               <Link href="/faq">{t("ctaSecondary")}</Link>
             </Button>
           </div>
-        </div>
+        </Container>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-        <Heading level={2} size="lg">
-          {t("featuresTitle")}
-        </Heading>
-        <Lead className="mt-2 max-w-2xl">{t("featuresSubtitle")}</Lead>
+      <section>
+        <Container className="py-16 lg:py-20">
+          <Heading level={2} size="lg">
+            {t("featuresTitle")}
+          </Heading>
+          <Lead className="mt-2 max-w-2xl">{t("featuresSubtitle")}</Lead>
 
-        <ul className="mt-10 grid gap-8 sm:grid-cols-3">
-          {FEATURES.map(({ key, icon: Icon }) => (
-            <li key={key} className="space-y-3">
-              <span className="flex size-11 items-center justify-center rounded-sm bg-accent-subtle text-accent">
-                <Icon className="size-5" aria-hidden="true" />
-              </span>
-              <Heading level={3} size="sm">
-                {t(`features.${key}.title`)}
-              </Heading>
-              <Text size="sm" variant="muted">
-                {t(`features.${key}.body`)}
-              </Text>
-            </li>
-          ))}
-        </ul>
+          <ul className="mt-10 grid gap-8 sm:grid-cols-3">
+            {FEATURES.map(({ key, icon: Icon }) => (
+              <li key={key} className="space-y-3">
+                <span className="flex size-11 items-center justify-center rounded-sm bg-accent-subtle text-accent">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+                <Heading level={3} size="sm">
+                  {t(`features.${key}.title`)}
+                </Heading>
+                <Text size="sm" variant="muted">
+                  {t(`features.${key}.body`)}
+                </Text>
+              </li>
+            ))}
+          </ul>
+        </Container>
       </section>
 
       <section className="border-y border-subtle bg-surface-sunken/60">
-        <div className="px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+        <Container className="py-16 lg:py-20">
           <Heading level={2} size="lg">
             {t("howTitle")}
           </Heading>
@@ -118,35 +120,37 @@ export default async function LandingPage() {
               </li>
             ))}
           </ol>
-        </div>
+        </Container>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 lg:px-10 lg:py-24">
-        <div className="rounded-sm bg-accent px-6 py-12 text-accent-fg sm:px-10 sm:py-14">
-          <Heading level={2} size="lg" className="text-accent-fg">
-            {t("ctaTitle")}
-          </Heading>
-          <p className="mt-3 max-w-xl text-base text-accent-fg/90">
-            {t("ctaBody")}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button
-              asChild
-              size="lg"
-              className="bg-surface text-fg hover:bg-surface-raised"
-            >
-              <Link href="/signup">{t("ctaButton")}</Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-accent-fg/40 bg-transparent text-accent-fg shadow-none hover:bg-accent-fg/10 hover:text-accent-fg hover:shadow-none"
-            >
-              <Link href="/login">{tm("logIn")}</Link>
-            </Button>
+      <section>
+        <Container className="py-16 lg:py-24">
+          <div className="rounded-sm bg-accent px-6 py-12 text-accent-fg sm:px-10 sm:py-14">
+            <Heading level={2} size="lg" className="text-accent-fg">
+              {t("ctaTitle")}
+            </Heading>
+            <p className="mt-3 max-w-xl text-base text-accent-fg/90">
+              {t("ctaBody")}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button
+                asChild
+                size="lg"
+                className="bg-surface text-fg hover:bg-surface-raised"
+              >
+                <Link href="/signup">{t("ctaButton")}</Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-accent-fg/40 bg-transparent text-accent-fg shadow-none hover:bg-accent-fg/10 hover:text-accent-fg hover:shadow-none"
+              >
+                <Link href="/login">{tm("logIn")}</Link>
+              </Button>
+            </div>
           </div>
-        </div>
+        </Container>
       </section>
     </>
   );

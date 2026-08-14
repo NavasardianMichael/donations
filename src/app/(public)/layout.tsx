@@ -1,4 +1,5 @@
 import { Wordmark } from "@/components/brand/wordmark";
+import { Container } from "@/components/ui";
 import { copyrightLine } from "@/lib/brand";
 
 /**
@@ -18,18 +19,24 @@ export default function PublicLayout({
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
+      {/* Chrome and page share one measure, so the wordmark sits over the
+          donation card's left edge instead of in the far corner of a wide
+          screen. See `Container` and docs/ui-conventions.md. */}
       <header className="border-b border-subtle bg-surface">
-        <div className="flex h-14 items-center px-4 sm:px-6">
+        <Container size="reading" className="flex h-14 items-center">
           <Wordmark size="sm" />
-        </div>
+        </Container>
       </header>
 
       <main className="flex-1">{children}</main>
 
       <footer className="border-t border-subtle bg-surface">
-        <div className="px-4 py-6 text-center text-xs text-muted sm:px-6">
+        <Container
+          size="reading"
+          className="py-6 text-center text-xs text-muted"
+        >
           {copyrightLine()}
-        </div>
+        </Container>
       </footer>
     </div>
   );
